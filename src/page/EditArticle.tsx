@@ -23,7 +23,7 @@ const EditArticle: React.FC = () => {
       }
 
       try {
-        const articleId = parseInt(id, 10);
+        const articleId = id
         const data = await fetchArticleById(articleId);
         
         if (!data) {
@@ -47,7 +47,7 @@ const EditArticle: React.FC = () => {
     
     setIsSubmitting(true);
     try {
-      await updateArticle(parseInt(id, 10), articleData);
+      await updateArticle(id, articleData);
       navigate('/');
     } catch (err) {
       console.error('Failed to update article:', err);
