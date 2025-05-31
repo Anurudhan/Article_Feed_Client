@@ -20,7 +20,7 @@ export const fetchArticles = (): Promise<Article[]> => {
   });
 };
 
-export const fetchArticleById = (id: number): Promise<Article | undefined> => {
+export const fetchArticleById = (id: string): Promise<Article | undefined> => {
   return new Promise((resolve) => {
     setTimeout(() => {
       const articles = getArticles();
@@ -35,8 +35,8 @@ export const createArticle = (articleData: Partial<Article>): Promise<Article> =
     setTimeout(() => {
       const articles = getArticles();
       const newId = articles.length > 0 
-        ? Math.max(...articles.map(a => a.id)) + 1 
-        : 1;
+        ? Math.max(...articles.map(a => Number(a.id))) + 1 +""
+        :"1";
       
       const newArticle: Article = {
         id: newId,
@@ -62,7 +62,7 @@ export const createArticle = (articleData: Partial<Article>): Promise<Article> =
   });
 };
 
-export const updateArticle = (id: number, articleData: Partial<Article>): Promise<Article> => {
+export const updateArticle = (id: string, articleData: Partial<Article>): Promise<Article> => {
   return new Promise((resolve, reject) => {
     setTimeout(() => {
       const articles = getArticles();
@@ -89,7 +89,7 @@ export const updateArticle = (id: number, articleData: Partial<Article>): Promis
   });
 };
 
-export const deleteArticle = (id: number): Promise<void> => {
+export const deleteArticle = (id: string): Promise<void> => {
   return new Promise((resolve) => {
     setTimeout(() => {
       const articles = getArticles();
@@ -100,7 +100,7 @@ export const deleteArticle = (id: number): Promise<void> => {
   });
 };
 
-export const toggleLike = (id: number): Promise<Article> => {
+export const toggleLike = (id: string): Promise<Article> => {
   return new Promise((resolve, reject) => {
     setTimeout(() => {
       const articles = getArticles();

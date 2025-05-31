@@ -7,7 +7,7 @@ const MyArticleModal: React.FC<{
   isOpen: boolean;
   onClose: () => void;
   onEdit: (article: Article) => void;
-  onDelete: (articleId: number) => void;
+  onDelete: (articleId: string) => void;
 }> = ({ article, isOpen, onClose, onEdit, onDelete }) => {
   if (!isOpen) return null;
 

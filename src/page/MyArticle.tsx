@@ -93,7 +93,7 @@ const MyArticle: React.FC = () => {
     window.location.href = `/edit/${article.id}`;
   };
 
-  const handleModalDelete = async (articleId: number) => {
+  const handleModalDelete = async (articleId: string) => {
     try {
       await deleteArticle(articleId);
       setArticles((prevArticles) => prevArticles.filter((article) => article.id !== articleId));
@@ -102,7 +102,7 @@ const MyArticle: React.FC = () => {
     }
   };
 
-  const handleLike = async (articleId: number) => {
+  const handleLike = async (articleId: string) => {
     try {
       setArticles((prevArticles) =>
         prevArticles.map((article) =>
@@ -121,7 +121,7 @@ const MyArticle: React.FC = () => {
     }
   };
 
-  const handleDislike = async (articleId: number) => {
+  const handleDislike = async (articleId: string) => {
     try {
       setArticles((prevArticles) =>
         prevArticles.map((article) =>
@@ -139,7 +139,7 @@ const MyArticle: React.FC = () => {
     }
   };
 
-  const handleBlock = async (articleId: number) => {
+  const handleBlock = async (articleId: string) => {
     try {
       await deleteArticle(articleId);
       setArticles((prevArticles) => prevArticles.filter((article) => article.id !== articleId));
