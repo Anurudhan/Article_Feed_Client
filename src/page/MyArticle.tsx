@@ -1,14 +1,17 @@
 import React, { useState, useEffect } from 'react';
 import { Loader, Search, Filter, RefreshCw, FileText, BookOpen, PenTool } from 'lucide-react';
 import type { Article } from '../types/Article';
-import { deleteArticle, fetchArticles } from '../service/articleService';
+import { 
+  deleteArticle, 
+  fetchArticles, 
+  likeArticle, 
+  dislikeArticle, 
+  blockArticle 
+} from '../service/articleService';
 import Button from '../components/UI/Button';
 import ArticleCard from '../components/Article/ArticleCard';
 import Pagination from '../components/utilities/Pagination';
 import MyArticleModal from '../components/Article/MyArticleModal';
-
-
-// Modal Component for Article Details
 
 const MyArticle: React.FC = () => {
   const [articles, setArticles] = useState<Article[]>([]);
@@ -41,8 +44,10 @@ const MyArticle: React.FC = () => {
     try {
       const data = await fetchArticles();
       setArticles(data);
-    } catch (error) {
-      console.error('Failed to fetch articles:', error);
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : 'Failed to fetch articles';
+      console.error('Failed to fetch articles:', errorMessage);
+      // You might want to show a toast notification here
     } finally {
       setIsLoading(false);
     }
@@ -90,23 +95,32 @@ const MyArticle: React.FC = () => {
 
   const handleEdit = (article: Article) => {
     // Navigate to edit page
-    window.location.href = `/edit/${article.id}`;
+    window.location.href = `/edit/${article._id}`;
   };
 
   const handleModalDelete = async (articleId: string) => {
     try {
       await deleteArticle(articleId);
-      setArticles((prevArticles) => prevArticles.filter((article) => article.id !== articleId));
-    } catch (error) {
-      console.error('Failed to delete article:', error);
+      setArticles((prevArticles) => prevArticles.filter((article) => article._id !== articleId));
+      // Close modal if the deleted article was selected
+      if (selectedArticle?._id === articleId) {
+        setIsModalOpen(false);
+        setSelectedArticle(null);
+      }
+      // You might want to show a success toast here
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : 'Failed to delete article';
+      console.error('Failed to delete article:', errorMessage);
+      // You might want to show an error toast here
     }
   };
 
   const handleLike = async (articleId: string) => {
     try {
+      // Optimistic update
       setArticles((prevArticles) =>
         prevArticles.map((article) =>
-          article.id === articleId
+          article._id === articleId
             ? {
                 ...article,
                 likes: article.isLiked ? article.likes - 1 : article.likes + 1,
@@ -116,16 +130,24 @@ const MyArticle: React.FC = () => {
             : article
         )
       );
-    } catch (error) {
-      console.error('Failed to like article:', error);
+
+      // API call
+      await likeArticle(articleId);
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : 'Failed to like article';
+      console.error('Failed to like article:', errorMessage);
+      // Revert optimistic update on error
+      loadArticles();
+      // You might want to show an error toast here
     }
   };
 
   const handleDislike = async (articleId: string) => {
     try {
+      // Optimistic update
       setArticles((prevArticles) =>
         prevArticles.map((article) =>
-          article.id === articleId
+          article._id === articleId
             ? {
                 ...article,
                 isDisliked: !article.isDisliked,
@@ -134,17 +156,32 @@ const MyArticle: React.FC = () => {
             : article
         )
       );
-    } catch (error) {
-      console.error('Failed to dislike article:', error);
+
+      // API call
+      await dislikeArticle(articleId);
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : 'Failed to dislike article';
+      console.error('Failed to dislike article:', errorMessage);
+      // Revert optimistic update on error
+      loadArticles();
+      // You might want to show an error toast here
     }
   };
 
   const handleBlock = async (articleId: string) => {
     try {
-      await deleteArticle(articleId);
-      setArticles((prevArticles) => prevArticles.filter((article) => article.id !== articleId));
-    } catch (error) {
-      console.error('Failed to block article:', error);
+      await blockArticle(articleId);
+      setArticles((prevArticles) => prevArticles.filter((article) => article._id !== articleId));
+      // Close modal if the blocked article was selected
+      if (selectedArticle?._id === articleId) {
+        setIsModalOpen(false);
+        setSelectedArticle(null);
+      }
+      // You might want to show a success toast here
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : 'Failed to block article';
+      console.error('Failed to block article:', errorMessage);
+      // You might want to show an error toast here
     }
   };
 
@@ -346,7 +383,7 @@ const MyArticle: React.FC = () => {
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-6">
               {currentArticles.map((article) => (
                 <ArticleCard
-                  key={article.id}
+                  key={article._id}
                   article={article}
                   onCardClick={handleCardClick}
                   onLike={handleLike}

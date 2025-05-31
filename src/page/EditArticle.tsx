@@ -3,7 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { Loader } from 'lucide-react';
 import type { Article } from '../types/Article';
 import ArticleForm from '../components/Article/ArticleForm';
-import { fetchArticleById, updateArticle } from '../service/articleService';
+import { getArticleById, updateArticle } from '../service/articleService';
 
 
 const EditArticle: React.FC = () => {
@@ -24,7 +24,7 @@ const EditArticle: React.FC = () => {
 
       try {
         const articleId = id
-        const data = await fetchArticleById(articleId);
+        const data = await getArticleById(articleId);
         
         if (!data) {
           setError('Article not found');

@@ -7,7 +7,7 @@ export interface Author {
   avatar: string;
 }
 export interface Article {
-  id: string;
+  _id: string;
   title: string;
   content: string;
   author: Author;
@@ -88,7 +88,7 @@ export const mockAuthor: Author = {
 
 export const mockArticles: Article[] = [
   {
-    id: "1",
+    _id: "1",
     title: 'The Future of AI in Web Development',
     content:
       'Artificial Intelligence is transforming web development by enabling smarter tools and automation. From generating code to optimizing user experiences, AI is reshaping how developers build and maintain websites.',
@@ -104,7 +104,7 @@ export const mockArticles: Article[] = [
     tags: ['AI', 'Web Development', 'Technology'],
   },
   {
-    id: "2",
+    _id: "2",
     title: 'Exploring the Metaverse: Opportunities and Challenges',
     content:
       'The metaverse is an emerging digital frontier, offering immersive experiences for users. This article explores its potential applications, technical challenges, and ethical considerations.',
@@ -120,7 +120,7 @@ export const mockArticles: Article[] = [
     tags: ['Metaverse', 'Innovation', 'Virtual Reality'],
   },
   {
-    id: "3",
+    _id: "3",
     title: 'Best Practices for Responsive Design',
     content:
       'Responsive design ensures websites work seamlessly across devices. Learn key strategies for creating flexible layouts, optimizing images, and using modern CSS techniques.',

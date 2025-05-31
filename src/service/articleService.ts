@@ -1,131 +1,127 @@
-import { mockArticles, mockAuthor, type Article } from "../types/Article";
 
+import type { CustomResponse } from '../components/utilities/AxiosInstance';
+import axiosInstance from '../components/utilities/AxiosInstance';
+import type { Article } from '../types/Article';
 
-// Simulate loading data from storage
-const getArticles = (): Article[] => {
-  const storedArticles = localStorage.getItem('articles');
-  return storedArticles ? JSON.parse(storedArticles) : mockArticles;
+// Fetch all articles for the current user
+export const fetchArticles = async (): Promise<Article[]> => {
+  try {
+    const response = await axiosInstance.get<CustomResponse<Article[]>>('/articles/my-articles');
+    return response.data.data || [];
+  } catch (error: unknown) {
+    const errorMessage = error instanceof Error ? error.message : 'Failed to fetch articles';
+    console.error('Error fetching articles:', errorMessage);
+    throw new Error(errorMessage);
+  }
+};
+export const getUserPreferences = async (): Promise<string[]> => {
+  try {
+    const response = await axiosInstance.get<CustomResponse<{ preferences: string[] }>>('/user/preferences');
+    return response.data.data?.preferences || [];
+  } catch (error: unknown) {
+    const errorMessage = error instanceof Error ? error.message : 'Failed to fetch user preferences';
+    console.error('Error fetching preferences:', errorMessage);
+    return []; // Return empty array if preferences can't be fetched
+  }
 };
 
-// Simulate saving data to storage
-const saveArticles = (articles: Article[]): void => {
-  localStorage.setItem('articles', JSON.stringify(articles));
+// Update user preferences
+export const updateUserPreferences = async (preferences: string[]): Promise<void> => {
+  try {
+    await axiosInstance.patch<CustomResponse>('/user/preferences', { preferences });
+  } catch (error: unknown) {
+    const errorMessage = error instanceof Error ? error.message : 'Failed to update user preferences';
+    console.error('Error updating preferences:', errorMessage);
+    throw new Error(errorMessage);
+  }
 };
 
-export const fetchArticles = (): Promise<Article[]> => {
-  return new Promise((resolve) => {
-    setTimeout(() => {
-      resolve(getArticles());
-    }, 500);
-  });
+export const getCategories = async (): Promise<string[]> => {
+  try {
+    const response = await axiosInstance.get<CustomResponse<{ categories: string[] }>>('/articles/categories');
+    return response.data.data?.categories || [];
+  } catch (error: unknown) {
+    console.error('Error fetching categories:', error);
+    return ['Technology', 'Design', 'Science']; // Default categories as fallback
+  }
 };
 
-export const fetchArticleById = (id: string): Promise<Article | undefined> => {
-  return new Promise((resolve) => {
-    setTimeout(() => {
-      const articles = getArticles();
-      const article = articles.find(a => a.id === id);
-      resolve(article);
-    }, 300);
-  });
+// Delete an article by ID
+export const deleteArticle = async (articleId: string): Promise<void> => {
+  try {
+    await axiosInstance.delete<CustomResponse>(`/articles/${articleId}`);
+  } catch (error: unknown) {
+    const errorMessage = error instanceof Error ? error.message : 'Failed to delete article';
+    console.error('Error deleting article:', errorMessage);
+    throw new Error(errorMessage);
+  }
 };
 
-export const createArticle = (articleData: Partial<Article>): Promise<Article> => {
-  return new Promise((resolve) => {
-    setTimeout(() => {
-      const articles = getArticles();
-      const newId = articles.length > 0 
-        ? Math.max(...articles.map(a => Number(a.id))) + 1 +""
-        :"1";
-      
-      const newArticle: Article = {
-        id: newId,
-        title: articleData.title || '',
-        content: articleData.content || '',
-        author: mockAuthor,
-        publishedAt: new Date().toISOString(),
-        category: articleData.category || 'uncategorized',
-        image: articleData.image || '',
-        likes: 0,
-        readTime: Math.ceil((articleData.content?.length || 0) / 1000) || 1, // Rough estimate
-        views: 0,
-        isLiked: false,
-        isDisliked: false,
-        tags: articleData.tags || [],
-      };
-      
-      const updatedArticles = [...articles, newArticle];
-      saveArticles(updatedArticles);
-      
-      resolve(newArticle);
-    }, 800);
-  });
+// Like an article
+export const likeArticle = async (articleId: string): Promise<void> => {
+  try {
+    await axiosInstance.patch<CustomResponse>(`/articles/${articleId}/like`);
+  } catch (error: unknown) {
+    const errorMessage = error instanceof Error ? error.message : 'Failed to like article';
+    console.error('Error liking article:', errorMessage);
+    throw new Error(errorMessage);
+  }
 };
 
-export const updateArticle = (id: string, articleData: Partial<Article>): Promise<Article> => {
-  return new Promise((resolve, reject) => {
-    setTimeout(() => {
-      const articles = getArticles();
-      const index = articles.findIndex(a => a.id === id);
-      
-      if (index === -1) {
-        reject(new Error('Article not found'));
-        return;
-      }
-      
-      const updatedArticle = {
-        ...articles[index],
-        ...articleData,
-        publishedAt: articles[index].publishedAt, // Preserve original publish date
-        author: articles[index].author, // Preserve original author
-      };
-      
-      const updatedArticles = [...articles];
-      updatedArticles[index] = updatedArticle;
-      
-      saveArticles(updatedArticles);
-      resolve(updatedArticle);
-    }, 800);
-  });
+// Dislike an article
+export const dislikeArticle = async (articleId: string): Promise<void> => {
+  try {
+    await axiosInstance.patch<CustomResponse>(`/articles/${articleId}/dislike`);
+  } catch (error: unknown) {
+    const errorMessage = error instanceof Error ? error.message : 'Failed to dislike article';
+    console.error('Error disliking article:', errorMessage);
+    throw new Error(errorMessage);
+  }
 };
 
-export const deleteArticle = (id: string): Promise<void> => {
-  return new Promise((resolve) => {
-    setTimeout(() => {
-      const articles = getArticles();
-      const updatedArticles = articles.filter(a => a.id !== id);
-      saveArticles(updatedArticles);
-      resolve();
-    }, 500);
-  });
+// Get a single article by ID
+export const getArticleById = async (articleId: string): Promise<Article> => {
+  try {
+    const response = await axiosInstance.get<CustomResponse<Article>>(`/articles/${articleId}`);
+    return response.data.data;
+  } catch (error: unknown) {
+    const errorMessage = error instanceof Error ? error.message : 'Failed to fetch article';
+    console.error('Error fetching article:', errorMessage);
+    throw new Error(errorMessage);
+  }
 };
 
-export const toggleLike = (id: string): Promise<Article> => {
-  return new Promise((resolve, reject) => {
-    setTimeout(() => {
-      const articles = getArticles();
-      const index = articles.findIndex(a => a.id === id);
-      
-      if (index === -1) {
-        reject(new Error('Article not found'));
-        return;
-      }
-      
-      const article = articles[index];
-      const updatedArticle: Article = {
-        ...article,
-        isLiked: !article.isLiked,
-        isDisliked: article.isDisliked && !article.isLiked ? false : article.isDisliked,
-        likes: article.isLiked 
-          ? article.likes - 1 
-          : article.likes + (article.isDisliked ? 2 : 1)
-      };
-      
-      const updatedArticles = [...articles];
-      updatedArticles[index] = updatedArticle;
-      
-      saveArticles(updatedArticles);
-      resolve(updatedArticle);
-    }, 300);
-  });
+// Create a new article
+export const createArticle = async (articleData: Omit<Article, '_id' | 'publishedAt' | 'views' | 'likes' | 'isLiked' | 'isDisliked'>): Promise<Article> => {
+  try {
+    const response = await axiosInstance.post<CustomResponse<Article>>('/articles', articleData);
+    return response.data.data;
+  } catch (error: unknown) {
+    const errorMessage = error instanceof Error ? error.message : 'Failed to create article';
+    console.error('Error creating article:', errorMessage);
+    throw new Error(errorMessage);
+  }
+};
+
+// Update an existing article
+export const updateArticle = async (articleId: string, articleData: Partial<Article>): Promise<Article> => {
+  try {
+    const response = await axiosInstance.put<CustomResponse<Article>>(`/articles/${articleId}`, articleData);
+    return response.data.data;
+  } catch (error: unknown) {
+    const errorMessage = error instanceof Error ? error.message : 'Failed to update article';
+    console.error('Error updating article:', errorMessage);
+    throw new Error(errorMessage);
+  }
+};
+
+// Block/Hide an article (alternative to delete if you want to keep it but hide it)
+export const blockArticle = async (articleId: string): Promise<void> => {
+  try {
+    await axiosInstance.patch<CustomResponse>(`/articles/${articleId}/block`);
+  } catch (error: unknown) {
+    const errorMessage = error instanceof Error ? error.message : 'Failed to block article';
+    console.error('Error blocking article:', errorMessage);
+    throw new Error(errorMessage);
+  }
 };

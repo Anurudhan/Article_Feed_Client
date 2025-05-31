@@ -18,7 +18,7 @@ const MyArticleModal: React.FC<{
 
   const handleDelete = () => {
     if (window.confirm('Are you sure you want to delete this article? This action cannot be undone.')) {
-      onDelete(article.id);
+      onDelete(article._id);
       onClose();
     }
   };

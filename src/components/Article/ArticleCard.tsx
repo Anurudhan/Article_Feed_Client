@@ -8,7 +8,7 @@ interface Author {
 }
 
 interface Article {
-  id: string;
+  _id: string;
   title: string;
   content: string;
   author: Author;
@@ -43,17 +43,17 @@ const ArticleCard: React.FC<ArticleCardProps> = ({
 
   const handleLike = (e: React.MouseEvent<HTMLButtonElement>): void => {
     e.stopPropagation();
-    onLike(article.id);
+    onLike(article._id);
   };
 
   const handleDislike = (e: React.MouseEvent<HTMLButtonElement>): void => {
     e.stopPropagation();
-    onDislike(article.id);
+    onDislike(article._id);
   };
 
   const handleBlock = (e: React.MouseEvent<HTMLButtonElement>): void => {
     e.stopPropagation();
-    onBlock(article.id);
+    onBlock(article._id);
   };
 
   return (

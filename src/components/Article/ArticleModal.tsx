@@ -64,7 +64,7 @@ const ArticleModal: React.FC<ArticleModalProps> = ({ article, isOpen, onClose, o
           
           <div className="flex items-center gap-4 pt-6 border-t border-amber-100">
             <button
-              onClick={() => onLike(article.id)}
+              onClick={() => onLike(article._id)}
               className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-all ${
                 article.isLiked 
                   ? 'bg-red-100 text-red-600 hover:bg-red-200' 
@@ -76,7 +76,7 @@ const ArticleModal: React.FC<ArticleModalProps> = ({ article, isOpen, onClose, o
             </button>
             
             <button
-              onClick={() => onDislike(article.id)}
+              onClick={() => onDislike(article._id)}
               className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-all ${
                 article.isDisliked 
                   ? 'bg-amber-200 text-amber-700 hover:bg-amber-300' 
@@ -88,7 +88,7 @@ const ArticleModal: React.FC<ArticleModalProps> = ({ article, isOpen, onClose, o
             </button>
             
             <button
-              onClick={() => onBlock(article.id)}
+              onClick={() => onBlock(article._id)}
               className="flex items-center gap-2 px-4 py-2 bg-red-100 text-red-600 rounded-lg hover:bg-red-200 transition-all"
             >
               <Ban className="w-5 h-5" />
