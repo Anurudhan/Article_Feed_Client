@@ -1,0 +1,31 @@
+export interface UserEntity {
+  firstName: string;
+  lastName: string;
+  phone: string;
+  email: string;
+  dob: string;
+  password: string;
+  confirmPassword: string;
+  articlePreferences: string[];
+  isEmailVerified: boolean;
+  otp: string[];
+}
+
+
+export interface ValidationErrors {
+  firstName?: string;
+  lastName?: string;
+  phone?: string;
+  email?: string;
+  dob?: string;
+  password?: string;
+  confirmPassword?: string;
+  articlePreferences?: string;
+  otp?: string;
+}
+
+export interface Category {
+  id: string;
+  name: string;
+  description: string;
+}
