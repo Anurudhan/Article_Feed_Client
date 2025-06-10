@@ -1,26 +1,8 @@
 import React from 'react';
 import { Heart, ThumbsDown, Ban, Eye } from 'lucide-react';
+import type { Article } from '../../types/Article';
+import { useAuth } from '../../redux/hooks/useAuth';
 
-// Define interfaces for article and user data
-interface Author {
-  name: string;
-  avatar: string;
-}
-
-interface Article {
-  _id: string;
-  title: string;
-  content: string;
-  author: Author;
-  publishedAt: string;
-  category: string;
-  image: string;
-  likes: number;
-  readTime: number;
-  views: number;
-  isLiked: boolean;
-  isDisliked: boolean;
-}
 
 interface ArticleCardProps {
   article: Article;
@@ -37,6 +19,9 @@ const ArticleCard: React.FC<ArticleCardProps> = ({
   onDislike,
   onBlock,
 }) => {
+  const user = useAuth()
+  const isLiked=article.likes.includes(user?._id as string);
+  const isDisliked=article.dislikes.includes(user?._id as string);
   const handleCardClick = (): void => {
     onCardClick(article);
   };
@@ -55,7 +40,7 @@ const ArticleCard: React.FC<ArticleCardProps> = ({
     e.stopPropagation();
     onBlock(article._id);
   };
-
+if(!article.author) return null;
   return (
     <div
       className="bg-white rounded-2xl overflow-hidden shadow-lg hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-2 cursor-pointer group border border-amber-100"
@@ -86,7 +71,7 @@ const ArticleCard: React.FC<ArticleCardProps> = ({
         
         <div className="flex items-center gap-3 mb-4">
           <img 
-            src={article.author.avatar} 
+            src={article.author.avatar||"https://www.shutterstock.com/shutterstock/videos/3596848245/thumb/6.jpg?ip=x480"} 
             alt={article.author.name}
             className="w-8 h-8 rounded-full object-cover"
           />
@@ -101,12 +86,12 @@ const ArticleCard: React.FC<ArticleCardProps> = ({
             <button
               onClick={handleLike}
               className={`flex items-center gap-1 text-sm transition-colors ${
-                article.isLiked ? 'text-red-600' : 'text-gray-600 hover:text-red-600'
+                isLiked ? 'text-red-600' : 'text-gray-600 hover:text-red-600'
               }`}
               type="button"
             >
-              <Heart className={`w-5 h-5 sm:w-4 sm:h-4 ${article.isLiked ? 'fill-current' : ''}`} />
-              {article.likes}
+              <Heart className={`w-5 h-5 sm:w-4 sm:h-4 ${isLiked ? 'fill-current' : ''}`} />
+              {article.likes.length}
             </button>
             
             <div className="flex items-center gap-1 text-gray-600 text-sm">
@@ -119,11 +104,11 @@ const ArticleCard: React.FC<ArticleCardProps> = ({
             <button
               onClick={handleDislike}
               className={`p-1 rounded transition-colors ${
-                article.isDisliked ? 'text-amber-700' : 'text-gray-400 hover:text-amber-700'
+                isDisliked ? 'text-amber-700' : 'text-gray-400 hover:text-amber-700'
               }`}
               type="button"
             >
-              <ThumbsDown className={`w-5 h-5 sm:w-4 sm:h-4 ${article.isDisliked ? 'fill-current' : ''}`} />
+              <ThumbsDown className={`w-5 h-5 sm:w-4 sm:h-4 ${isDisliked ? 'fill-current' : ''}`} />
             </button>
             
             <button

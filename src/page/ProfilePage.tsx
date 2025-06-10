@@ -1,53 +1,45 @@
-import  { useState } from 'react';
-import { User, Settings, Lock, BookOpen, Save, X, Check, Edit3, Mail, Phone, Calendar } from 'lucide-react';
+import { useState } from 'react';
+import { User as UserIcon, Settings, Lock, BookOpen, Save, X, Check, Edit3, Mail, Phone, Calendar } from 'lucide-react';
 import PersonalInformation from '../components/Profile/PersonalInformation';
 import PasswordChange from '../components/Profile/PasswordChange';
-import ArticlePreferencesProfile from '../components/Article/ArticlePreferncesProfile';
 import { CATEGORIES } from '../types/Article';
-
-
-interface User {
-  _id: string;
-  firstName: string;
-  lastName: string;
-  phone: string;
-  email: string;
-  dob: string;
-  articlePreferences: string[];
-  isEmailVerified: boolean;
-}
-
+import { useAuth } from '../redux/hooks/useAuth';
+import { useDispatch } from 'react-redux';
+import axios from 'axios';
+import type { User } from '../types/loginEntity';
+import type { editUserEntity } from '../types/UserEntity';
+import ArticlePreferencesProfile from '../components/Article/ArticlePreferncesProfile';
+import { updateUser } from '../redux/actions/updateUser';
+import { useToast } from '../contexts/ToastContext';
+import type { AppDispatch } from '../redux/Store';
 
 const ProfilePage = () => {
-  const [user, setUser] = useState<User>({
-    _id: "64a7b8c9d1e2f3g4h5i6j7k8",
-    firstName: "John",
-    lastName: "Doe",
-    phone: "+1 (555) 123-4567",
-    email: "john.doe@example.com",
-    dob: "1990-05-15",
-    articlePreferences: ["coffee-culture", "brewing-techniques", "bean-origins"],
-    isEmailVerified: true
-  });
-
+  const dispatch = useDispatch<AppDispatch>();
+  const { showToast } = useToast();
+  const user = useAuth() as User | null;
+  console.log(user,"this is my user 💖💖💖💖")
   const [editMode, setEditMode] = useState({
     profile: false,
     password: false,
-    preferences: false
+    preferences: false,
   });
 
   const [formData, setFormData] = useState({
-    firstName: user.firstName,
-    lastName: user.lastName,
-    phone: user.phone,
-    email: user.email,
-    dob: user.dob,
-    currentPassword: '',
-    newPassword: '',
-    confirmPassword: ''
+    firstName: user?.firstName || '',
+    lastName: user?.lastName || '',
+    phone: user?.phone || '',
+    email: user?.email || '',
+    dob: user?.dob || '',
   });
 
-  const [errors, setErrors] = useState({
+  const [passwordData, setPasswordData] = useState({
+    currentPassword: '',
+    newPassword: '',
+    confirmPassword: '',
+  });
+
+  // Updated ValidationErrors type to include all fields
+  const [errors, setErrors] = useState<editUserEntity>({
     firstName: '',
     lastName: '',
     phone: '',
@@ -56,14 +48,20 @@ const ProfilePage = () => {
     currentPassword: '',
     newPassword: '',
     confirmPassword: '',
-    preferences: ''
+    articlePreferences: '',
   });
 
-  const [tempPreferences, setTempPreferences] = useState([...user.articlePreferences]);
+  const [tempPreferences, setTempPreferences] = useState<string[]>(user?.articlePreferences || []);
 
+  // Use string type for field to match component expectations
   const handleInputChange = (field: string, value: string) => {
-    setFormData(prev => ({ ...prev, [field]: value }));
-    setErrors(prev => ({ ...prev, [field]: '' }));
+    setFormData((prev) => ({ ...prev, [field]: value }));
+    setErrors((prev) => ({ ...prev, [field]: '' }));
+  };
+
+  const handlePasswordChange = (field: string, value: string) => {
+    setPasswordData((prev) => ({ ...prev, [field]: value }));
+    setErrors((prev) => ({ ...prev, [field]: '' }));
   };
 
   const handleBlur = (field: string) => {
@@ -76,101 +74,155 @@ const ProfilePage = () => {
       error = 'Invalid email address';
     } else if (field === 'phone' && !/^\+?\d{10,15}$/.test(formData.phone.replace(/\D/g, ''))) {
       error = 'Invalid phone number';
-    } else if (field === 'currentPassword' && !formData.currentPassword) {
+    } else if (field === 'currentPassword' && !passwordData.currentPassword) {
       error = 'Current password is required';
-    } else if (field === 'newPassword' && formData.newPassword.length < 8) {
+    } else if (field === 'newPassword' && passwordData.newPassword.length < 8) {
       error = 'Password must be at least 8 characters';
-    } else if (field === 'confirmPassword' && formData.newPassword !== formData.confirmPassword) {
+    } else if (field === 'confirmPassword' && passwordData.newPassword !== passwordData.confirmPassword) {
       error = 'Passwords do not match';
     }
-    setErrors(prev => ({ ...prev, [field]: error }));
+    setErrors((prev) => ({ ...prev, [field]: error }));
   };
 
-  const handleProfileSave = () => {
-    if (Object.values(errors).some(error => error) || !formData.firstName || !formData.lastName || !formData.email || !formData.phone) {
-      alert('Please fix all errors before saving');
+  const handleProfileSave = async () => {
+    if (
+      Object.values(errors).some((error) => error) ||
+      !formData.firstName ||
+      !formData.lastName ||
+      !formData.email ||
+      !formData.phone
+    ) {
+      showToast('Please fix all errors before saving', 'error');
       return;
     }
-    setUser(prev => ({
-      ...prev,
-      firstName: formData.firstName,
-      lastName: formData.lastName,
-      phone: formData.phone,
-      email: formData.email,
-      dob: formData.dob
-    }));
-    setEditMode(prev => ({ ...prev, profile: false }));
+
+    try {
+      await dispatch(
+        updateUser({
+          _id: user!._id,
+          firstName: formData.firstName,
+          lastName: formData.lastName,
+          phone: formData.phone,
+          email: formData.email,
+          dob: formData.dob,
+          articlePreferences: user!.articlePreferences,
+          isEmailVerified: user!.isEmailVerified,
+        })
+      ).unwrap(); // Unwrap to handle fulfilled/rejected states
+      setEditMode((prev) => ({ ...prev, profile: false }));
+      showToast('Profile updated successfully!', 'success');
+    } catch (error) {
+      console.log(error)
+      showToast(`Failed to update profile: Please try again`, 'error');
+    }
   };
 
-  const handlePasswordSave = () => {
-    if (Object.values(errors).some(error => error) || !formData.currentPassword || !formData.newPassword || !formData.confirmPassword) {
-      alert('Please fix all errors before saving');
+  const handlePasswordSave = async () => {
+    if (
+      Object.values(errors).some((error) => error) ||
+      !passwordData.currentPassword ||
+      !passwordData.newPassword ||
+      !passwordData.confirmPassword
+    ) {
+      showToast('Please fix all errors before saving', 'error');
       return;
     }
-    alert("Password changed successfully!");
-    setFormData(prev => ({
-      ...prev,
-      currentPassword: '',
-      newPassword: '',
-      confirmPassword: ''
-    }));
-    setErrors(prev => ({
-      ...prev,
-      currentPassword: '',
-      newPassword: '',
-      confirmPassword: ''
-    }));
-    setEditMode(prev => ({ ...prev, password: false }));
+
+    try {
+      await axios.post('/api/change-password', {
+        userId: user!._id,
+        currentPassword: passwordData.currentPassword,
+        newPassword: passwordData.newPassword,
+      });
+      showToast('Password changed successfully!', 'success');
+      setPasswordData({
+        currentPassword: '',
+        newPassword: '',
+        confirmPassword: '',
+      });
+      setErrors((prev) => ({
+        ...prev,
+        currentPassword: '',
+        newPassword: '',
+        confirmPassword: '',
+      }));
+      setEditMode((prev) => ({ ...prev, password: false }));
+    } catch (error: unknown) {
+      console.log(error)
+      showToast(`Failed to change password:  Please check your current password and try again`, 'error');
+    }
   };
 
-  const handlePreferencesSave = () => {
+  const handlePreferencesSave = async () => {
     if (tempPreferences.length === 0) {
-      setErrors(prev => ({ ...prev, preferences: 'Please select at least one preference' }));
+      setErrors((prev) => ({ ...prev, articlePreferences: 'Please select at least one preference' }));
+      showToast('Please select at least one preference', 'error');
       return;
     }
-    setUser(prev => ({ ...prev, articlePreferences: [...tempPreferences] }));
-    setErrors(prev => ({ ...prev, preferences: '' }));
-    setEditMode(prev => ({ ...prev, preferences: false }));
+
+    try {
+      await dispatch(
+        updateUser({
+          _id: user!._id,
+          firstName: user!.firstName,
+          lastName: user!.lastName,
+          phone: user!.phone,
+          email: user!.email,
+          dob: user!.dob,
+          articlePreferences: [...tempPreferences],
+          isEmailVerified: user!.isEmailVerified,
+        })
+      ).unwrap();
+      setErrors((prev) => ({ ...prev, articlePreferences: '' }));
+      setEditMode((prev) => ({ ...prev, preferences: false }));
+      showToast('Preferences updated successfully!', 'success');
+    } catch (error: unknown) {
+      console.log(error)
+      showToast(`Failed to update preferences: Please try again`, 'error');
+    }
   };
 
-  const cancelEdit = (section: string) => {
+  const cancelEdit = (section: 'profile' | 'password' | 'preferences') => {
     if (section === 'profile') {
       setFormData({
-        ...formData,
-        firstName: user.firstName,
-        lastName: user.lastName,
-        phone: user.phone,
-        email: user.email,
-        dob: user.dob
+        firstName: user?.firstName || '',
+        lastName: user?.lastName || '',
+        phone: user?.phone || '',
+        email: user?.email || '',
+        dob: user?.dob || '',
       });
-      setErrors({
-        ...errors,
+      setErrors((prev) => ({
+        ...prev,
         firstName: '',
         lastName: '',
         phone: '',
         email: '',
-        dob: ''
-      });
+        dob: '',
+      }));
     } else if (section === 'password') {
-      setFormData({
-        ...formData,
+      setPasswordData({
         currentPassword: '',
         newPassword: '',
-        confirmPassword: ''
+        confirmPassword: '',
       });
-      setErrors({
-        ...errors,
+      setErrors((prev) => ({
+        ...prev,
         currentPassword: '',
         newPassword: '',
-        confirmPassword: ''
-      });
+        confirmPassword: '',
+      }));
     } else if (section === 'preferences') {
-      setTempPreferences([...user.articlePreferences]);
-      setErrors(prev => ({ ...prev, preferences: '' }));
+      setTempPreferences([...(user?.articlePreferences || [])]);
+      setErrors((prev) => ({ ...prev, articlePreferences: '' }));
     }
-    setEditMode(prev => ({ ...prev, [section]: false }));
+    setEditMode((prev) => ({ ...prev, [section]: false }));
   };
 
+  if (!user) {
+    return <div>Loading...</div>;
+  }
+
+  // JSX remains the same as in your original code
   return (
     <div className="min-h-screen bg-gradient-to-br from-orange-50 via-amber-50 to-yellow-50 px-4 py-6 sm:px-6 lg:px-8">
       <div className="max-w-7xl mx-auto">
@@ -235,7 +287,7 @@ const ProfilePage = () => {
                 Personal Information
               </h2>
               <button
-                onClick={() => setEditMode(prev => ({ ...prev, profile: !prev.profile }))}
+                onClick={() => setEditMode((prev) => ({ ...prev, profile: !prev.profile }))}
                 className="flex items-center px-4 py-2 sm:px-6 sm:py-3 bg-gradient-to-r from-amber-600 to-orange-600 text-white rounded-xl hover:from-amber-700 hover:to-orange-700 transition-all duration-300 shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 font-medium"
               >
                 <Edit3 className="w-4 h-4 mr-2" />
@@ -271,7 +323,7 @@ const ProfilePage = () => {
             ) : (
               <div className="space-y-6">
                 <div className="flex items-center p-4 bg-gradient-to-r from-amber-50 to-orange-50 rounded-xl border border-amber-200">
-                  <User className="w-6 h-6 text-amber-600 mr-4 flex-shrink-0" />
+                  <UserIcon className="w-6 h-6 text-amber-600 mr-4 flex-shrink-0" />
                   <span className="text-amber-900 font-medium text-base sm:text-lg">{user.firstName} {user.lastName}</span>
                 </div>
                 <div className="flex items-center p-4 bg-gradient-to-r from-amber-50 to-orange-50 rounded-xl border border-amber-200">
@@ -288,7 +340,7 @@ const ProfilePage = () => {
                     {new Date(user.dob).toLocaleDateString('en-US', {
                       year: 'numeric',
                       month: 'long',
-                      day: 'numeric'
+                      day: 'numeric',
                     })}
                   </span>
                 </div>
@@ -304,7 +356,7 @@ const ProfilePage = () => {
                 Security Settings
               </h2>
               <button
-                onClick={() => setEditMode(prev => ({ ...prev, password: !prev.password }))}
+                onClick={() => setEditMode((prev) => ({ ...prev, password: !prev.password }))}
                 className="flex items-center px-4 py-2 sm:px-6 sm:py-3 bg-gradient-to-r from-red-600 to-rose-600 text-white rounded-xl hover:from-red-700 hover:to-rose-700 transition-all duration-300 shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 font-medium"
               >
                 <Lock className="w-4 h-4 mr-2" />
@@ -315,9 +367,9 @@ const ProfilePage = () => {
             {editMode.password ? (
               <div>
                 <PasswordChange
-                  formData={formData}
+                  formData={passwordData}
                   errors={errors}
-                  onChange={handleInputChange}
+                  onChange={handlePasswordChange}
                   onBlur={handleBlur}
                 />
                 <div className="flex flex-col sm:flex-row gap-3 pt-4">
@@ -362,7 +414,7 @@ const ProfilePage = () => {
               Coffee Article Preferences
             </h2>
             <button
-              onClick={() => setEditMode(prev => ({ ...prev, preferences: !prev.preferences }))}
+              onClick={() => setEditMode((prev) => ({ ...prev, preferences: !prev.preferences }))}
               className="flex items-center px-4 py-2 sm:px-6 sm:py-3 bg-gradient-to-r from-purple-600 to-indigo-600 text-white rounded-xl hover:from-purple-700 hover:to-indigo-700 transition-all duration-300 shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 font-medium"
             >
               <Edit3 className="w-4 h-4 mr-2" />
@@ -376,7 +428,7 @@ const ProfilePage = () => {
                 selectedPreferences={tempPreferences}
                 onChange={setTempPreferences}
                 maxSelections={5}
-                error={errors.preferences}
+                error={errors.articlePreferences}
               />
               <div className="flex flex-col sm:flex-row gap-3 pt-4">
                 <button
@@ -402,7 +454,7 @@ const ProfilePage = () => {
               </p>
               <div className="flex flex-wrap gap-3">
                 {user.articlePreferences.map((preferenceId) => {
-                  const category = CATEGORIES.find(cat => cat.id === preferenceId);
+                  const category = CATEGORIES.find((cat) => cat.id === preferenceId);
                   return (
                     <span
                       key={preferenceId}

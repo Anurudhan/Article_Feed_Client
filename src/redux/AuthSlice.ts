@@ -4,6 +4,7 @@ import type { User } from "../types/loginEntity";
 import { loginUser, type LoginResponse } from "./actions/loginUser";
 import { getUser } from "./actions/getUser";
 import { logoutUser } from "./actions/logoutUser";
+import { updateUser } from "./actions/updateUser";
 
 interface AuthState {
     user: User | null;
@@ -29,6 +30,7 @@ const AuthSlice = createSlice({
             state.error=null
         })
         .addCase(loginUser.fulfilled,(state,action:PayloadAction<LoginResponse>)=>{
+          console.log(action.payload.user,"this is user data from the backend")
             state.user=action.payload.user;
             state.loading=false;
             state.error=null;
@@ -42,11 +44,26 @@ const AuthSlice = createSlice({
             state.error=null
         })
         .addCase(getUser.fulfilled,(state,action:PayloadAction<User>)=>{
+          console.log(action.payload,"this is user data from the backend")
             state.user=action.payload;
             state.loading=false;
             state.error=null;
         })
          .addCase(getUser.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.payload ? action.payload.message : 'Login failed';
+      })
+      .addCase(updateUser.pending,(state)=>{
+            state.loading=true;
+            state.error=null
+        })
+        .addCase(updateUser.fulfilled,(state,action:PayloadAction<LoginResponse>)=>{
+          console.log(action.payload.user,"this is user data from the backend")
+            state.user=action.payload.user;
+            state.loading=false;
+            state.error=null;
+        })
+         .addCase(updateUser.rejected, (state, action) => {
         state.loading = false;
         state.error = action.payload ? action.payload.message : 'Login failed';
       })

@@ -23,6 +23,17 @@ export interface ValidationErrors {
   articlePreferences?: string;
   otp?: string;
 }
+export interface editUserEntity{
+  firstName?: string;
+  lastName?: string;
+  phone?: string;
+  email?: string;
+  dob?: string;
+  newPassword?: string;
+  confirmPassword?: string;
+  currentPassword?:string
+  articlePreferences?: string;
+}
 
 export interface Category {
   id: string;

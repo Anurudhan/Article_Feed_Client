@@ -7,9 +7,9 @@ import PublicLayout from './layouts/PublicLayout';
 import ProtectedLayout from './layouts/ProtectedLayout';
 import CreateArticle from '../page/CreateArticle';
 import EditArticle from '../page/EditArticle';
-import MyArticle from '../page/MyArticle';
 import ProfilePage from '../page/ProfilePage';
 import RegistrationForm from '../components/Registration';
+import MyArticle from '../page/MyArticle';
 
 
 function AppRoutes() {

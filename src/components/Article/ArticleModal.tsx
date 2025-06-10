@@ -1,5 +1,6 @@
 import { Ban, Clock, Eye, Heart, ThumbsDown } from "lucide-react";
 import type { Article } from "../../types/Article";
+import { useAuth } from "../../redux/hooks/useAuth";
 
 
 
@@ -13,8 +14,11 @@ interface ArticleModalProps {
 }
 
 const ArticleModal: React.FC<ArticleModalProps> = ({ article, isOpen, onClose, onLike, onDislike, onBlock }) => {
+   const user = useAuth()
+    const isLiked=article?.likes.includes(user?._id as string);
+    const isDisliked=article?.dislikes.includes(user?._id as string);
   if (!isOpen || !article) return null;
-
+  if(!article.author) return null;
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
       <div className="bg-white rounded-2xl max-w-4xl w-full max-h-[90vh] overflow-y-auto border border-amber-100">
@@ -35,7 +39,7 @@ const ArticleModal: React.FC<ArticleModalProps> = ({ article, isOpen, onClose, o
         <div className="p-8 bg-gradient-to-b from-white to-amber-50">
           <div className="flex items-center gap-4 mb-4">
             <img 
-              src={article.author.avatar} 
+              src={article.author.avatar||"https://www.shutterstock.com/shutterstock/videos/3596848245/thumb/6.jpg?ip=x480" } 
               alt={article.author.name}
               className="w-12 h-12 rounded-full object-cover"
             />
@@ -66,24 +70,24 @@ const ArticleModal: React.FC<ArticleModalProps> = ({ article, isOpen, onClose, o
             <button
               onClick={() => onLike(article._id)}
               className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-all ${
-                article.isLiked 
+                isLiked 
                   ? 'bg-red-100 text-red-600 hover:bg-red-200' 
                   : 'bg-amber-100 text-gray-600 hover:bg-amber-200'
               }`}
             >
-              <Heart className={`w-5 h-5 ${article.isLiked ? 'fill-current' : ''}`} />
-              Like ({article.likes})
+              <Heart className={`w-5 h-5 ${isLiked ? 'fill-current' : ''}`} />
+              Like ({article.likes.length})
             </button>
             
             <button
               onClick={() => onDislike(article._id)}
               className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-all ${
-                article.isDisliked 
+                isDisliked 
                   ? 'bg-amber-200 text-amber-700 hover:bg-amber-300' 
                   : 'bg-amber-100 text-gray-600 hover:bg-amber-200'
               }`}
             >
-              <ThumbsDown className={`w-5 h-5 ${article.isDisliked ? 'fill-current' : ''}`} />
+              <ThumbsDown className={`w-5 h-5 ${isDisliked ? 'fill-current' : ''}`} />
               Dislike
             </button>
             

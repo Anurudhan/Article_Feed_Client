@@ -1,26 +1,38 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Loader, Search, Filter, RefreshCw, FileText, BookOpen, PenTool } from 'lucide-react';
 import type { Article } from '../types/Article';
 import { 
   deleteArticle, 
-  fetchArticles, 
+  fetchMyArticles,
   likeArticle, 
   dislikeArticle, 
-  blockArticle 
+  blockArticle,
+  type PaginatedArticleResponse 
 } from '../service/articleService';
 import Button from '../components/UI/Button';
 import ArticleCard from '../components/Article/ArticleCard';
 import Pagination from '../components/utilities/Pagination';
 import MyArticleModal from '../components/Article/MyArticleModal';
+import { useAuth } from '../redux/hooks/useAuth';
 
 const MyArticle: React.FC = () => {
-  const [articles, setArticles] = useState<Article[]>([]);
-  const [filteredArticles, setFilteredArticles] = useState<Article[]>([]);
+  const [articleData, setArticleData] = useState<PaginatedArticleResponse>({
+    articles: [],
+    totalCount: 0,
+    totalPages: 0,
+    currentPage: 1,
+    hasNextPage: false,
+    hasPrevPage: false
+  });
   const [isLoading, setIsLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [categoryFilter, setCategoryFilter] = useState('');
   const [sortBy, setSortBy] = useState<'newest' | 'popular'>('newest');
   const [showFilters, setShowFilters] = useState(false);
+  const [categories, setCategories] = useState<string[]>([]);
+
+  const user = useAuth();
+  const currentUserId = user?._id as string;
 
   // Pagination state
   const [currentPage, setCurrentPage] = useState(1);
@@ -30,63 +42,75 @@ const MyArticle: React.FC = () => {
   const [selectedArticle, setSelectedArticle] = useState<Article | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
 
-  useEffect(() => {
-    loadArticles();
-  }, []);
+  // Debounced search function
+  const [searchTimeout, setSearchTimeout] = useState<number | null>(null);
 
-  useEffect(() => {
-    filterArticles();
-    setCurrentPage(1); // Reset to first page when filters change
-  }, [articles, searchTerm, categoryFilter, sortBy]);
-
-  const loadArticles = async () => {
+  const loadArticles = useCallback(async (resetPage: boolean = false) => {
     setIsLoading(true);
     try {
-      const data = await fetchArticles();
-      setArticles(data);
+      const page = resetPage ? 1 : currentPage;
+      const params = {
+        page,
+        limit: itemsPerPage,
+        search: searchTerm || undefined,
+        category: categoryFilter || undefined,
+        sortBy,
+      };
+
+      const data = await fetchMyArticles(params);
+      setArticleData(data);
+      
+      if (resetPage) {
+        setCurrentPage(1);
+      }
+
+      // Extract unique categories for filter dropdown
+      if (data.articles.length > 0) {
+        const uniqueCategories = [...new Set(data.articles.map(article => article.category))];
+        setCategories(prev => [...new Set([...prev, ...uniqueCategories])]);
+      }
     } catch (error: unknown) {
       const errorMessage = error instanceof Error ? error.message : 'Failed to fetch articles';
       console.error('Failed to fetch articles:', errorMessage);
-      // You might want to show a toast notification here
+      setArticleData({
+        articles: [],
+        totalCount: 0,
+        totalPages: 0,
+        currentPage: 1,
+        hasNextPage: false,
+        hasPrevPage: false
+      });
     } finally {
       setIsLoading(false);
     }
+  }, [currentPage, searchTerm, categoryFilter, sortBy, itemsPerPage]);
+
+  useEffect(() => {
+    loadArticles();
+  }, [loadArticles]);
+
+  // Handle search with debouncing
+  const handleSearchChange = (value: string) => {
+    setSearchTerm(value);
+    
+    if (searchTimeout) {
+      clearTimeout(searchTimeout);
+    }
+
+    const timeout = setTimeout(() => {
+      setCurrentPage(1);
+      loadArticles(true);
+    }, 500) as unknown as number; // 500ms debounce
+
+    setSearchTimeout(timeout);
   };
 
-  const filterArticles = () => {
-    let filtered = [...articles];
-
-    // Apply search filter
-    if (searchTerm) {
-      const searchLower = searchTerm.toLowerCase();
-      filtered = filtered.filter(
-        (article) =>
-          article.title.toLowerCase().includes(searchLower) ||
-          article.content.toLowerCase().includes(searchLower) ||
-          (article.tags && article.tags.some((tag) => tag.toLowerCase().includes(searchLower)))
-      );
+  // Handle filter changes
+  useEffect(() => {
+    if (categoryFilter !== '' || sortBy !== 'newest') {
+      loadArticles(true);
     }
-
-    // Apply category filter
-    if (categoryFilter) {
-      filtered = filtered.filter((article) => article.category === categoryFilter);
-    }
-
-    // Apply sorting
-    if (sortBy === 'newest') {
-      filtered.sort((a, b) => new Date(b.publishedAt).getTime() - new Date(a.publishedAt).getTime());
-    } else if (sortBy === 'popular') {
-      filtered.sort((a, b) => b.views - a.views);
-    }
-
-    setFilteredArticles(filtered);
-  };
-
-  // Pagination calculations
-  const totalPages = Math.ceil(filteredArticles.length / itemsPerPage);
-  const startIndex = (currentPage - 1) * itemsPerPage;
-  const endIndex = startIndex + itemsPerPage;
-  const currentArticles = filteredArticles.slice(startIndex, endIndex);
+  }, [categoryFilter, sortBy]);
 
   const handleCardClick = (article: Article) => {
     setSelectedArticle(article);
@@ -94,100 +118,95 @@ const MyArticle: React.FC = () => {
   };
 
   const handleEdit = (article: Article) => {
-    // Navigate to edit page
     window.location.href = `/edit/${article._id}`;
   };
 
   const handleModalDelete = async (articleId: string) => {
     try {
       await deleteArticle(articleId);
-      setArticles((prevArticles) => prevArticles.filter((article) => article._id !== articleId));
-      // Close modal if the deleted article was selected
+      // Refresh the current page after deletion
+      loadArticles();
       if (selectedArticle?._id === articleId) {
         setIsModalOpen(false);
         setSelectedArticle(null);
       }
-      // You might want to show a success toast here
     } catch (error: unknown) {
       const errorMessage = error instanceof Error ? error.message : 'Failed to delete article';
       console.error('Failed to delete article:', errorMessage);
-      // You might want to show an error toast here
     }
   };
 
   const handleLike = async (articleId: string) => {
     try {
       // Optimistic update
-      setArticles((prevArticles) =>
-        prevArticles.map((article) =>
+      setArticleData(prev => ({
+        ...prev,
+        articles: prev.articles.map((article) =>
           article._id === articleId
             ? {
                 ...article,
-                likes: article.isLiked ? article.likes - 1 : article.likes + 1,
-                isLiked: !article.isLiked,
-                isDisliked: article.isDisliked ? false : article.isDisliked,
+                likes: article.likes.includes(currentUserId)
+                  ? article.likes.filter((id) => id !== currentUserId)
+                  : [...article.likes, currentUserId],
+                dislikes: article.dislikes.includes(currentUserId)
+                  ? article.dislikes.filter((id) => id !== currentUserId)
+                  : article.dislikes,
               }
             : article
         )
-      );
+      }));
 
       // API call
       await likeArticle(articleId);
     } catch (error: unknown) {
       const errorMessage = error instanceof Error ? error.message : 'Failed to like article';
       console.error('Failed to like article:', errorMessage);
-      // Revert optimistic update on error
-      loadArticles();
-      // You might want to show an error toast here
+      loadArticles(); // Revert on error
     }
   };
 
   const handleDislike = async (articleId: string) => {
     try {
       // Optimistic update
-      setArticles((prevArticles) =>
-        prevArticles.map((article) =>
+      setArticleData(prev => ({
+        ...prev,
+        articles: prev.articles.map((article) =>
           article._id === articleId
             ? {
                 ...article,
-                isDisliked: !article.isDisliked,
-                isLiked: article.isLiked ? false : article.isLiked,
+                dislikes: article.dislikes.includes(currentUserId)
+                  ? article.dislikes.filter((id) => id !== currentUserId)
+                  : [...article.dislikes, currentUserId],
+                likes: article.likes.includes(currentUserId)
+                  ? article.likes.filter((id) => id !== currentUserId)
+                  : article.likes,
               }
             : article
         )
-      );
+      }));
 
       // API call
       await dislikeArticle(articleId);
     } catch (error: unknown) {
       const errorMessage = error instanceof Error ? error.message : 'Failed to dislike article';
       console.error('Failed to dislike article:', errorMessage);
-      // Revert optimistic update on error
-      loadArticles();
-      // You might want to show an error toast here
+      loadArticles(); // Revert on error
     }
   };
 
   const handleBlock = async (articleId: string) => {
     try {
       await blockArticle(articleId);
-      setArticles((prevArticles) => prevArticles.filter((article) => article._id !== articleId));
-      // Close modal if the blocked article was selected
+      // Refresh the current page after blocking
+      loadArticles();
       if (selectedArticle?._id === articleId) {
         setIsModalOpen(false);
         setSelectedArticle(null);
       }
-      // You might want to show a success toast here
     } catch (error: unknown) {
       const errorMessage = error instanceof Error ? error.message : 'Failed to block article';
       console.error('Failed to block article:', errorMessage);
-      // You might want to show an error toast here
     }
-  };
-
-  const getUniqueCategories = () => {
-    const categories = articles.map((article) => article.category);
-    return ['', ...new Set(categories)];
   };
 
   const handleRefresh = () => {
@@ -197,6 +216,30 @@ const MyArticle: React.FC = () => {
   const handlePageChange = (page: number) => {
     setCurrentPage(page);
     window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  const handleCategoryChange = (category: string) => {
+    setCategoryFilter(category);
+    setCurrentPage(1);
+  };
+
+  const handleSortChange = (sort: 'newest' | 'popular') => {
+    setSortBy(sort);
+    setCurrentPage(1);
+  };
+
+  const clearSearch = () => {
+    setSearchTerm('');
+    setCurrentPage(1);
+    loadArticles(true);
+  };
+
+  const clearFilters = () => {
+    setSearchTerm('');
+    setCategoryFilter('');
+    setSortBy('newest');
+    setCurrentPage(1);
+    loadArticles(true);
   };
 
   return (
@@ -209,7 +252,6 @@ const MyArticle: React.FC = () => {
     >
       {/* Animated Background Elements */}
       <div className="fixed inset-0 pointer-events-none overflow-hidden">
-        {/* Floating Articles/Documents */}
         <div className="absolute top-10 left-10 opacity-20 animate-pulse">
           <FileText className="w-14 h-14 text-amber-800 transform rotate-12" />
         </div>
@@ -219,8 +261,6 @@ const MyArticle: React.FC = () => {
         >
           <BookOpen className="w-12 h-12 text-amber-700 transform -rotate-45" />
         </div>
-
-        {/* Scattered Reading Elements */}
         <div
           className="absolute bottom-20 left-20 opacity-20 transform rotate-45 animate-pulse"
           style={{ animationDelay: '1s' }}
@@ -230,8 +270,6 @@ const MyArticle: React.FC = () => {
         <div className="absolute top-1/3 right-8 opacity-20 transform -rotate-12">
           <FileText className="w-10 h-10 text-amber-700" />
         </div>
-
-        {/* Additional Writing Tools */}
         <div
           className="absolute bottom-40 right-40 opacity-20 transform rotate-25 animate-pulse"
           style={{ animationDelay: '2s' }}
@@ -241,8 +279,6 @@ const MyArticle: React.FC = () => {
         <div className="absolute top-20 left-1/3 opacity-15 transform -rotate-30">
           <PenTool className="w-8 h-8 text-amber-600" />
         </div>
-
-        {/* More Scattered Elements */}
         <div className="absolute top-1/2 left-8 opacity-15 transform rotate-60">
           <FileText className="w-8 h-8 text-amber-700" />
         </div>
@@ -265,12 +301,19 @@ const MyArticle: React.FC = () => {
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 mt-16 relative z-10">
         <div className="flex flex-col md:flex-row md:items-center justify-between mb-6">
-          <h1
-            className="text-3xl font-bold text-amber-900 mb-4 md:mb-0"
-            style={{ fontFamily: '"Times New Roman", serif' }}
-          >
-            Your Articles
-          </h1>
+          <div className="flex items-center gap-4 mb-4 md:mb-0">
+            <h1
+              className="text-3xl font-bold text-amber-900"
+              style={{ fontFamily: '"Times New Roman", serif' }}
+            >
+              Your Articles
+            </h1>
+            {articleData.totalCount > 0 && (
+              <span className="text-sm text-amber-700 bg-amber-100 px-3 py-1 rounded-full">
+                {articleData.totalCount} article{articleData.totalCount !== 1 ? 's' : ''}
+              </span>
+            )}
+          </div>
 
           <div className="flex flex-col sm:flex-row gap-3">
             <div className="relative">
@@ -278,7 +321,7 @@ const MyArticle: React.FC = () => {
                 type="text"
                 placeholder="Search articles..."
                 value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
+                onChange={(e) => handleSearchChange(e.target.value)}
                 className="pl-9 pr-4 py-2 border border-amber-300 rounded-md focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-amber-500 w-full sm:w-auto bg-white/80 backdrop-blur-sm"
                 style={{
                   boxShadow: '0 2px 8px rgba(139, 69, 19, 0.1)',
@@ -317,7 +360,7 @@ const MyArticle: React.FC = () => {
               border: '1px solid rgba(139, 69, 19, 0.15)',
             }}
           >
-            <div className="flex flex-wrap gap-4">
+            <div className="flex flex-wrap gap-4 items-end">
               <div className="w-full sm:w-auto">
                 <label
                   htmlFor="category"
@@ -329,17 +372,15 @@ const MyArticle: React.FC = () => {
                 <select
                   id="category"
                   value={categoryFilter}
-                  onChange={(e) => setCategoryFilter(e.target.value)}
+                  onChange={(e) => handleCategoryChange(e.target.value)}
                   className="w-full sm:w-auto px-3 py-2 border border-amber-300 rounded-md focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-amber-500 bg-white/90"
                 >
                   <option value="">All Categories</option>
-                  {getUniqueCategories()
-                    .filter(Boolean)
-                    .map((category) => (
-                      <option key={category} value={category}>
-                        {category.charAt(0).toUpperCase() + category.slice(1)}
-                      </option>
-                    ))}
+                  {categories.map((category) => (
+                    <option key={category} value={category}>
+                      {category.charAt(0).toUpperCase() + category.slice(1)}
+                    </option>
+                  ))}
                 </select>
               </div>
 
@@ -354,13 +395,21 @@ const MyArticle: React.FC = () => {
                 <select
                   id="sortBy"
                   value={sortBy}
-                  onChange={(e) => setSortBy(e.target.value as 'newest' | 'popular')}
+                  onChange={(e) => handleSortChange(e.target.value as 'newest' | 'popular')}
                   className="w-full sm:w-auto px-3 py-2 border border-amber-300 rounded-md focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-amber-500 bg-white/90"
                 >
                   <option value="newest">Newest First</option>
                   <option value="popular">Most Popular</option>
                 </select>
               </div>
+
+              <Button
+                variant="ghost"
+                onClick={clearFilters}
+                className="text-amber-700 hover:bg-amber-50"
+              >
+                Clear All
+              </Button>
             </div>
           </div>
         )}
@@ -377,11 +426,10 @@ const MyArticle: React.FC = () => {
               </p>
             </div>
           </div>
-        ) : filteredArticles.length > 0 ? (
+        ) : articleData.articles.length > 0 ? (
           <>
-            {/* Responsive Grid Layout */}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-6">
-              {currentArticles.map((article) => (
+              {articleData.articles.map((article) => (
                 <ArticleCard
                   key={article._id}
                   article={article}
@@ -393,14 +441,13 @@ const MyArticle: React.FC = () => {
               ))}
             </div>
 
-            {/* Pagination */}
-            {totalPages > 1 && (
+            {articleData.totalPages > 1 && (
               <Pagination
-                currentPage={currentPage}
-                totalPages={totalPages}
+                currentPage={articleData.currentPage}
+                totalPages={articleData.totalPages}
                 onPageChange={handlePageChange}
                 itemsPerPage={itemsPerPage}
-                totalItems={filteredArticles.length}
+                totalItems={articleData.totalCount}
               />
             )}
           </>
@@ -426,11 +473,11 @@ const MyArticle: React.FC = () => {
               className="text-amber-700 mb-6"
               style={{ fontFamily: '"Times New Roman", serif' }}
             >
-              {articles.length === 0
+              {!searchTerm && !categoryFilter && sortBy === 'newest'
                 ? "You haven't created any articles yet. Start your writing journey!"
                 : "No articles match your current filters. Try adjusting your search."}
             </p>
-            {articles.length === 0 && (
+            {!searchTerm && !categoryFilter && sortBy === 'newest' ? (
               <Button
                 onClick={() => (window.location.href = '/create')}
                 className="bg-gradient-to-r from-amber-600 to-amber-700 hover:from-amber-700 hover:to-amber-800 text-white px-6 py-3 rounded-lg font-semibold transition-all duration-300 transform hover:scale-105"
@@ -441,21 +488,31 @@ const MyArticle: React.FC = () => {
               >
                 Create Your First Article
               </Button>
-            )}
-            {articles.length > 0 && searchTerm && (
-              <Button
-                variant="secondary"
-                onClick={() => setSearchTerm('')}
-                className="border-amber-300 text-amber-700 hover:bg-amber-50 px-6 py-2 rounded-lg font-medium transition-all duration-300"
-                style={{ fontFamily: '"Times New Roman", serif' }}
-              >
-                Clear Search
-              </Button>
+            ) : (
+              <div className="flex gap-3 justify-center">
+                {searchTerm && (
+                  <Button
+                    variant="secondary"
+                    onClick={clearSearch}
+                    className="border-amber-300 text-amber-700 hover:bg-amber-50 px-6 py-2 rounded-lg font-medium transition-all duration-300"
+                    style={{ fontFamily: '"Times New Roman", serif' }}
+                  >
+                    Clear Search
+                  </Button>
+                )}
+                <Button
+                  variant="secondary"
+                  onClick={clearFilters}
+                  className="border-amber-300 text-amber-700 hover:bg-amber-50 px-6 py-2 rounded-lg font-medium transition-all duration-300"
+                  style={{ fontFamily: '"Times New Roman", serif' }}
+                >
+                  Clear All Filters
+                </Button>
+              </div>
             )}
           </div>
         )}
 
-        {/* Article Details Modal */}
         {selectedArticle && (
           <MyArticleModal
             article={selectedArticle}
