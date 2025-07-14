@@ -32,7 +32,7 @@ function AppRoutes() {
         <Route element={<ProtectedLayout />}>
             <Route path="myarticle" element={<MyArticle />} />
             <Route path="create" element={<CreateArticle />} />
-            <Route path="edit/:id" element={<EditArticle />} />
+            <Route path="edit" element={<EditArticle />} />
             <Route path="profile" element={<ProfilePage />} />
         </Route>
 

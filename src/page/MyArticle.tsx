@@ -14,6 +14,7 @@ import ArticleCard from '../components/Article/ArticleCard';
 import Pagination from '../components/utilities/Pagination';
 import MyArticleModal from '../components/Article/MyArticleModal';
 import { useAuth } from '../redux/hooks/useAuth';
+import { useNavigate } from 'react-router-dom';
 
 const MyArticle: React.FC = () => {
   const [articleData, setArticleData] = useState<PaginatedArticleResponse>({
@@ -37,7 +38,7 @@ const MyArticle: React.FC = () => {
   // Pagination state
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 8;
-
+  const navigate=useNavigate();
   // Modal state
   const [selectedArticle, setSelectedArticle] = useState<Article | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -118,7 +119,9 @@ const MyArticle: React.FC = () => {
   };
 
   const handleEdit = (article: Article) => {
-    window.location.href = `/edit/${article._id}`;
+      navigate(`/edit`, { 
+    state: { article } 
+  });
   };
 
   const handleModalDelete = async (articleId: string) => {

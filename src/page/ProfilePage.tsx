@@ -5,13 +5,14 @@ import PasswordChange from '../components/Profile/PasswordChange';
 import { CATEGORIES } from '../types/Article';
 import { useAuth } from '../redux/hooks/useAuth';
 import { useDispatch } from 'react-redux';
-import axios from 'axios';
 import type { User } from '../types/loginEntity';
 import type { editUserEntity } from '../types/UserEntity';
 import ArticlePreferencesProfile from '../components/Article/ArticlePreferncesProfile';
 import { updateUser } from '../redux/actions/updateUser';
 import { useToast } from '../contexts/ToastContext';
 import type { AppDispatch } from '../redux/Store';
+import { changePassword } from '../redux/actions/changePassword';
+import { updateArticlePreferences } from '../redux/actions/updateArticlePreferences';
 
 const ProfilePage = () => {
   const dispatch = useDispatch<AppDispatch>();
@@ -84,6 +85,7 @@ const ProfilePage = () => {
     setErrors((prev) => ({ ...prev, [field]: error }));
   };
 
+  // 1. Update Personal Information
   const handleProfileSave = async () => {
     if (
       Object.values(errors).some((error) => error) ||
@@ -108,15 +110,17 @@ const ProfilePage = () => {
           articlePreferences: user!.articlePreferences,
           isEmailVerified: user!.isEmailVerified,
         })
-      ).unwrap(); // Unwrap to handle fulfilled/rejected states
+      ).unwrap();
+      
       setEditMode((prev) => ({ ...prev, profile: false }));
       showToast('Profile updated successfully!', 'success');
     } catch (error) {
-      console.log(error)
-      showToast(`Failed to update profile: Please try again`, 'error');
+      console.log(error);
+      showToast(`Failed to update profile: ${error}`, 'error');
     }
   };
 
+  // 2. Change Password
   const handlePasswordSave = async () => {
     if (
       Object.values(errors).some((error) => error) ||
@@ -129,11 +133,14 @@ const ProfilePage = () => {
     }
 
     try {
-      await axios.post('/api/change-password', {
-        userId: user!._id,
-        currentPassword: passwordData.currentPassword,
-        newPassword: passwordData.newPassword,
-      });
+      await dispatch(
+        changePassword({
+          userId: user!._id,
+          currentPassword: passwordData.currentPassword,
+          newPassword: passwordData.newPassword,
+        })
+      ).unwrap();
+      
       showToast('Password changed successfully!', 'success');
       setPasswordData({
         currentPassword: '',
@@ -147,12 +154,13 @@ const ProfilePage = () => {
         confirmPassword: '',
       }));
       setEditMode((prev) => ({ ...prev, password: false }));
-    } catch (error: unknown) {
-      console.log(error)
-      showToast(`Failed to change password:  Please check your current password and try again`, 'error');
+    } catch (error) {
+      console.log(error);
+      showToast(`Failed to change password: ${error}`, 'error');
     }
   };
 
+  // 3. Update Article Preferences
   const handlePreferencesSave = async () => {
     if (tempPreferences.length === 0) {
       setErrors((prev) => ({ ...prev, articlePreferences: 'Please select at least one preference' }));
@@ -162,23 +170,15 @@ const ProfilePage = () => {
 
     try {
       await dispatch(
-        updateUser({
-          _id: user!._id,
-          firstName: user!.firstName,
-          lastName: user!.lastName,
-          phone: user!.phone,
-          email: user!.email,
-          dob: user!.dob,
-          articlePreferences: [...tempPreferences],
-          isEmailVerified: user!.isEmailVerified,
-        })
+        updateArticlePreferences([...tempPreferences])
       ).unwrap();
+      
       setErrors((prev) => ({ ...prev, articlePreferences: '' }));
       setEditMode((prev) => ({ ...prev, preferences: false }));
       showToast('Preferences updated successfully!', 'success');
-    } catch (error: unknown) {
-      console.log(error)
-      showToast(`Failed to update preferences: Please try again`, 'error');
+    } catch (error) {
+      console.log(error);
+      showToast(`Failed to update preferences: ${error}`, 'error');
     }
   };
 
@@ -222,7 +222,6 @@ const ProfilePage = () => {
     return <div>Loading...</div>;
   }
 
-  // JSX remains the same as in your original code
   return (
     <div className="min-h-screen bg-gradient-to-br from-orange-50 via-amber-50 to-yellow-50 px-4 py-6 sm:px-6 lg:px-8">
       <div className="max-w-7xl mx-auto">

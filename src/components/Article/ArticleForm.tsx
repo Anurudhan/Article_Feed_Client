@@ -9,7 +9,7 @@ import TextareaField from '../UI/TextareaField';
 
 interface ArticleFormProps {
   initialArticle?: Article;
-  onSubmit: (article: Partial<Article>) => void;
+  onSubmit: (article: Partial<Article>, isPublished?: boolean) => void;
   isSubmitting?: boolean;
 }
 
@@ -100,34 +100,49 @@ const ArticleForm: React.FC<ArticleFormProps> = ({
     setArticle(prev => ({ ...prev, tags }));
   };
 
-  const validateForm = (): boolean => {
+  const validateForm = (isPublishing: boolean = false): boolean => {
     const newErrors: Record<string, string> = {};
 
-    if (!article.title?.trim()) newErrors.title = 'Title is required';
-    if (!article.content?.trim()) newErrors.content = 'Content is required';
-    if (!article.category) newErrors.category = 'Category is required';
-    if (!article.image?.trim()) newErrors.image = 'Image selection is required';
-    
-    // Validate read time (minimum 1 minute)
-    const totalMinutes = (timeInput.hours * 60) + timeInput.minutes + (timeInput.seconds / 60);
-    if (totalMinutes < 1) {
-      newErrors.readTime = 'Read time must be at least 1 minute';
+    // For publishing, all fields are required
+    if (isPublishing) {
+      if (!article.title?.trim()) newErrors.title = 'Title is required';
+      if (!article.content?.trim()) newErrors.content = 'Content is required';
+      if (!article.category) newErrors.category = 'Category is required';
+      if (!article.image?.trim()) newErrors.image = 'Image selection is required';
+      
+      // Validate read time (minimum 1 minute)
+      const totalMinutes = (timeInput.hours * 60) + timeInput.minutes + (timeInput.seconds / 60);
+      if (totalMinutes < 1) {
+        newErrors.readTime = 'Read time must be at least 1 minute';
+      }
+    }
+    // For saving draft, only validate if fields have content
+    else {
+      // Validate read time only if any time field has been filled
+      if (timeInput.hours > 0 || timeInput.minutes > 0 || timeInput.seconds > 0) {
+        const totalMinutes = (timeInput.hours * 60) + timeInput.minutes + (timeInput.seconds / 60);
+        if (totalMinutes < 1) {
+          newErrors.readTime = 'Read time must be at least 1 minute';
+        }
+      }
     }
 
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = (e: React.FormEvent, isPublishing: boolean = false) => {
     e.preventDefault();
-    if (validateForm()) {
+    if (validateForm(isPublishing)) {
       const totalMinutes = (timeInput.hours * 60) + timeInput.minutes + (timeInput.seconds / 60);
       const roundedReadTime = parseFloat(Math.max(1, totalMinutes).toFixed(2));
       const finalArticle = {
         ...article,
-        readTime: roundedReadTime
+        readTime: totalMinutes > 0 ? roundedReadTime : 0,
+        isPublished: isPublishing,
+        ...(isPublishing && { publishedAt: new Date().toISOString() })
       };
-      onSubmit(finalArticle);
+      onSubmit(finalArticle, isPublishing);
     }
   };
 
@@ -136,7 +151,7 @@ const ArticleForm: React.FC<ArticleFormProps> = ({
   };
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-6">
+    <form onSubmit={(e) => handleSubmit(e, false)} className="space-y-6">
       <div className="space-y-4">
         <InputField
           name="title"
@@ -332,9 +347,17 @@ const ArticleForm: React.FC<ArticleFormProps> = ({
         </Button>
         <Button 
           type="submit"
+          variant="secondary"
           isLoading={isSubmitting}
         >
-          {initialArticle ? 'Update Article' : 'Create Article'}
+          {initialArticle ? 'Save Draft' : 'Save Draft'}
+        </Button>
+        <Button 
+          type="button"
+          onClick={(e) => handleSubmit(e, true)}
+          isLoading={isSubmitting}
+        >
+          Publish
         </Button>
       </div>
     </form>

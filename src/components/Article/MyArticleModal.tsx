@@ -54,18 +54,34 @@ const MyArticleModal: React.FC<{
         <div className="p-6">
           {/* Article Header */}
           <div className="mb-6">
-            <h1
-              className="text-3xl font-bold text-amber-900 mb-4"
-              style={{ fontFamily: '"Times New Roman", serif' }}
-            >
-              {article.title}
-            </h1>
+            <div className="flex items-center justify-between mb-4">
+              <h1
+                className="text-3xl font-bold text-amber-900"
+                style={{ fontFamily: '"Times New Roman", serif' }}
+              >
+                {article.title}
+              </h1>
+              {/* Publication Status Badge */}
+              <div className="flex items-center gap-2">
+                <span
+                  className={`px-3 py-1 rounded-full text-xs font-medium ${
+                    article.isPublished
+                      ? 'bg-green-100 text-green-800 border border-green-200'
+                      : 'bg-yellow-100 text-yellow-800 border border-yellow-200'
+                  }`}
+                >
+                  {article.isPublished ? 'Published' : 'Draft'}
+                </span>
+              </div>
+            </div>
             <div className="flex flex-wrap items-center gap-4 text-sm text-amber-700 mb-4">
               <span className="flex items-center gap-1">
                 <Eye className="h-4 w-4" />
                 {article.views} views
               </span>
-              <span>Published: {new Date(article.publishedAt).toLocaleDateString()}</span>
+              {article.isPublished && article.publishedAt && (
+                <span>Published: {new Date(article.publishedAt).toLocaleDateString()}</span>
+              )}
               <span className="px-3 py-1 bg-amber-100 text-amber-800 rounded-full text-xs font-medium">
                 {article.category}
               </span>
@@ -138,15 +154,20 @@ const MyArticleModal: React.FC<{
           >
             Close
           </Button>
-          <Button
-            variant="secondary"
-            icon={<Edit className="h-4 w-4" />}
-            onClick={handleEdit}
-            className="bg-amber-100 border-amber-300 text-amber-800 hover:bg-amber-200 px-4 py-2 rounded-lg transition-all duration-300"
-            style={{ fontFamily: '"Times New Roman", serif' }}
-          >
-            Edit Article
-          </Button>
+          
+          {/* Only show Edit button for unpublished articles (drafts) */}
+          {!article.isPublished && (
+            <Button
+              variant="secondary"
+              icon={<Edit className="h-4 w-4" />}
+              onClick={handleEdit}
+              className="bg-amber-100 border-amber-300 text-amber-800 hover:bg-amber-200 px-4 py-2 rounded-lg transition-all duration-300"
+              style={{ fontFamily: '"Times New Roman", serif' }}
+            >
+              Edit Draft
+            </Button>
+          )}
+          
           <Button
             variant="ghost"
             icon={<Trash2 className="h-4 w-4" />}
@@ -162,4 +183,4 @@ const MyArticleModal: React.FC<{
   );
 };
 
-export default MyArticleModal
+export default MyArticleModal 
