@@ -18,7 +18,7 @@ const CreateArticle: React.FC = () => {
     const enrichedData: createArticleEntity = {
       title: formData.title ?? '',
       content: formData.content ?? '',
-      publishedAt: isPublished ? new Date().toISOString() : undefined, // Only set publishedAt if publishing
+      publishedAt: new Date().toISOString() , // Only set publishedAt if publishing
       category: formData.category ?? '',
       image: formData.image ?? '',
       readTime: formData.readTime ?? 1,

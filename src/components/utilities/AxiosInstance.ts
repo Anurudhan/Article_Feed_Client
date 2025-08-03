@@ -7,6 +7,8 @@ export interface CustomResponse<T = unknown> {
   success: boolean;
 }
 
+console.log(import.meta.env.VITE_BASE_URL,"this is backend url")
+
 const axiosInstance: AxiosInstance = axios.create({
   baseURL: import.meta.env.VITE_BASE_URL,
   timeout: 10000,
