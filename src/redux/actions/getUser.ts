@@ -12,7 +12,7 @@ export const getUser = createAsyncThunk<
   "auth/getuser",
   async (_, { rejectWithValue }) => {
     try {
-      const response = await axiosInstance.get("/"); // ✅ No need for full URL
+      const response = await axiosInstance.get("/user"); // ✅ No need for full URL
       return response.data.data as User; // ✅ because your interceptor wraps the response
     } catch (error) {
       const err = error as AxiosError<LoginError>;
