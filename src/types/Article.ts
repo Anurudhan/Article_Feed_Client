@@ -9,7 +9,7 @@ export interface Author {
 export interface createArticleEntity{
   title: string;
   content: string;
-  publishedAt: string;
+  publishedAt?: string;
   category: string;
   image: string;
   tags: string[];
@@ -22,14 +22,14 @@ export interface Article {
   content: string;
   authorId: string;
   author?: Author;
-  publishedAt: string;
+  publishedAt?: string;
   category: string;
   image: string;
   likes: string[];  
   dislikes: string[];
   blockedBy: string[];  
   readTime: number;
-  views: number;
+  views: string[];
   tags: string[];
   isPublished?:boolean;
   isDeleted?: boolean;

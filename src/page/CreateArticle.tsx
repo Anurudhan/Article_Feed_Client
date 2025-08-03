@@ -5,36 +5,36 @@ import ArticleForm from '../components/Article/ArticleForm';
 import { createArticle } from '../service/articleService';
 import { useToast } from '../contexts/ToastContext';
 
-
-
 const CreateArticle: React.FC = () => {
   const navigate = useNavigate();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const { showToast } = useToast();
-  const handleSubmit = async (formData: Partial<Article>) => {
-    console.log("this is submitting")
+
+  const handleSubmit = async (formData: Partial<Article>, isPublished?: boolean) => {
+    console.log('CreateArticle submitting:', { formData, isPublished });
 
     setIsSubmitting(true);
 
     const enrichedData: createArticleEntity = {
       title: formData.title ?? '',
       content: formData.content ?? '',
-      publishedAt: new Date().toISOString(),
+      publishedAt: isPublished ? new Date().toISOString() : undefined, // Only set publishedAt if publishing
       category: formData.category ?? '',
       image: formData.image ?? '',
       readTime: formData.readTime ?? 1,
       tags: formData.tags ?? [],
+      isPublished: isPublished ?? false, // Respect isPublished from ArticleForm
     };
 
     try {
       const response = await createArticle(enrichedData);
-
-      if(response){
-        showToast("You successfully created an article !..","success")
+      if (response) {
+        showToast('You successfully created an article!', 'success');
       }
       navigate('/myarticle');
     } catch (error) {
       console.error('Failed to create article:', error);
+      showToast('Failed to create article', 'error');
       setIsSubmitting(false);
     }
   };

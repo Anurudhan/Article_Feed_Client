@@ -13,8 +13,10 @@ import Button from '../components/UI/Button';
 import ArticleCard from '../components/Article/ArticleCard';
 import Pagination from '../components/utilities/Pagination';
 import MyArticleModal from '../components/Article/MyArticleModal';
+import ConfirmationModal from '../components/UI/ConfirmationModal';
 import { useAuth } from '../redux/hooks/useAuth';
 import { useNavigate } from 'react-router-dom';
+import { useToast } from '../contexts/ToastContext'; // Import useToast
 
 const MyArticle: React.FC = () => {
   const [articleData, setArticleData] = useState<PaginatedArticleResponse>({
@@ -31,14 +33,18 @@ const MyArticle: React.FC = () => {
   const [sortBy, setSortBy] = useState<'newest' | 'popular'>('newest');
   const [showFilters, setShowFilters] = useState(false);
   const [categories, setCategories] = useState<string[]>([]);
+  const [isConfirmModalOpen, setIsConfirmModalOpen] = useState(false);
+  const [articleToDelete, setArticleToDelete] = useState<string | null>(null);
 
   const user = useAuth();
   const currentUserId = user?._id as string;
+  const navigate = useNavigate();
+  const { showToast } = useToast(); // Initialize useToast
 
   // Pagination state
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 8;
-  const navigate=useNavigate();
+
   // Modal state
   const [selectedArticle, setSelectedArticle] = useState<Article | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -73,6 +79,7 @@ const MyArticle: React.FC = () => {
     } catch (error: unknown) {
       const errorMessage = error instanceof Error ? error.message : 'Failed to fetch articles';
       console.error('Failed to fetch articles:', errorMessage);
+      showToast('Failed to fetch articles', 'error'); // Show toast on fetch error
       setArticleData({
         articles: [],
         totalCount: 0,
@@ -84,7 +91,7 @@ const MyArticle: React.FC = () => {
     } finally {
       setIsLoading(false);
     }
-  }, [currentPage, searchTerm, categoryFilter, sortBy, itemsPerPage]);
+  }, [currentPage, searchTerm, categoryFilter, sortBy, itemsPerPage,showToast]);
 
   useEffect(() => {
     loadArticles();
@@ -119,24 +126,41 @@ const MyArticle: React.FC = () => {
   };
 
   const handleEdit = (article: Article) => {
-      navigate(`/edit`, { 
-    state: { article } 
-  });
+    navigate(`/edit`, { 
+      state: { article } 
+    });
   };
 
-  const handleModalDelete = async (articleId: string) => {
+  const handleModalDelete = (articleId: string) => {
+    setArticleToDelete(articleId);
+    setIsConfirmModalOpen(true);
+  };
+
+  const handleConfirmDelete = async () => {
+    if (!articleToDelete) return;
+
     try {
-      await deleteArticle(articleId);
+      await deleteArticle(articleToDelete);
+      showToast('Article deleted successfully', 'success'); // Show toast on successful deletion
       // Refresh the current page after deletion
       loadArticles();
-      if (selectedArticle?._id === articleId) {
+      if (selectedArticle?._id === articleToDelete) {
         setIsModalOpen(false);
         setSelectedArticle(null);
       }
     } catch (error: unknown) {
       const errorMessage = error instanceof Error ? error.message : 'Failed to delete article';
       console.error('Failed to delete article:', errorMessage);
+      showToast(errorMessage, 'error'); // Show toast with specific error message
+    } finally {
+      setIsConfirmModalOpen(false);
+      setArticleToDelete(null);
     }
+  };
+
+  const handleCancelDelete = () => {
+    setIsConfirmModalOpen(false);
+    setArticleToDelete(null);
   };
 
   const handleLike = async (articleId: string) => {
@@ -161,9 +185,11 @@ const MyArticle: React.FC = () => {
 
       // API call
       await likeArticle(articleId);
+      showToast('Article liked successfully', 'success'); // Show toast on successful like
     } catch (error: unknown) {
       const errorMessage = error instanceof Error ? error.message : 'Failed to like article';
       console.error('Failed to like article:', errorMessage);
+      showToast(errorMessage, 'error'); // Show toast on like error
       loadArticles(); // Revert on error
     }
   };
@@ -190,9 +216,11 @@ const MyArticle: React.FC = () => {
 
       // API call
       await dislikeArticle(articleId);
+      showToast('Article disliked successfully', 'success'); // Show toast on successful dislike
     } catch (error: unknown) {
       const errorMessage = error instanceof Error ? error.message : 'Failed to dislike article';
       console.error('Failed to dislike article:', errorMessage);
+      showToast(errorMessage, 'error'); // Show toast on dislike error
       loadArticles(); // Revert on error
     }
   };
@@ -200,6 +228,7 @@ const MyArticle: React.FC = () => {
   const handleBlock = async (articleId: string) => {
     try {
       await blockArticle(articleId);
+      showToast('Article blocked successfully', 'success'); // Show toast on successful block
       // Refresh the current page after blocking
       loadArticles();
       if (selectedArticle?._id === articleId) {
@@ -209,11 +238,13 @@ const MyArticle: React.FC = () => {
     } catch (error: unknown) {
       const errorMessage = error instanceof Error ? error.message : 'Failed to block article';
       console.error('Failed to block article:', errorMessage);
+      showToast(errorMessage, 'error'); // Show toast on block error
     }
   };
 
   const handleRefresh = () => {
     loadArticles();
+    showToast('Articles refreshed', 'success'); // Show toast on refresh
   };
 
   const handlePageChange = (page: number) => {
@@ -235,6 +266,7 @@ const MyArticle: React.FC = () => {
     setSearchTerm('');
     setCurrentPage(1);
     loadArticles(true);
+    showToast('Search cleared', 'success'); // Show toast on clear search
   };
 
   const clearFilters = () => {
@@ -243,6 +275,7 @@ const MyArticle: React.FC = () => {
     setSortBy('newest');
     setCurrentPage(1);
     loadArticles(true);
+    showToast('Filters cleared', 'success'); // Show toast on clear filters
   };
 
   return (
@@ -525,9 +558,19 @@ const MyArticle: React.FC = () => {
               setSelectedArticle(null);
             }}
             onEdit={handleEdit}
-            onDelete={handleModalDelete}
+            onDelete={() => handleModalDelete(selectedArticle._id)}
           />
         )}
+
+        <ConfirmationModal
+          isOpen={isConfirmModalOpen}
+          title="Confirm Delete"
+          message="Are you sure you want to delete this article? This action cannot be undone."
+          onConfirm={handleConfirmDelete}
+          onCancel={handleCancelDelete}
+          confirmText="Delete"
+          cancelText="Cancel"
+        />
       </div>
     </div>
   );

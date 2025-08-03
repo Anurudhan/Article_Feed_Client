@@ -41,7 +41,8 @@ const ArticleForm: React.FC<ArticleFormProps> = ({
     category: '',
     image: '',
     tags: [],
-    readTime: 0
+    readTime: 0,
+    isPublished: false // Ensure default is false for new articles
   });
   const [timeInput, setTimeInput] = useState<TimeInput>(initialTime);
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -132,16 +133,17 @@ const ArticleForm: React.FC<ArticleFormProps> = ({
   };
 
   const handleSubmit = (e: React.FormEvent, isPublishing: boolean = false) => {
-    e.preventDefault();
+    e.preventDefault(); // Prevent default form submission
     if (validateForm(isPublishing)) {
       const totalMinutes = (timeInput.hours * 60) + timeInput.minutes + (timeInput.seconds / 60);
       const roundedReadTime = parseFloat(Math.max(1, totalMinutes).toFixed(2));
       const finalArticle = {
         ...article,
         readTime: totalMinutes > 0 ? roundedReadTime : 0,
-        isPublished: isPublishing,
+        isPublished: isPublishing, // Explicitly set isPublished based on isPublishing
         ...(isPublishing && { publishedAt: new Date().toISOString() })
       };
+      console.log('Submitting article:', finalArticle); // Debug log to verify isPublished
       onSubmit(finalArticle, isPublishing);
     }
   };
@@ -354,7 +356,10 @@ const ArticleForm: React.FC<ArticleFormProps> = ({
         </Button>
         <Button 
           type="button"
-          onClick={(e) => handleSubmit(e, true)}
+          onClick={(e) => {
+            e.preventDefault(); // Explicitly prevent default to avoid form submission
+            handleSubmit(e, true);
+          }}
           isLoading={isSubmitting}
         >
           Publish

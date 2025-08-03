@@ -4,21 +4,20 @@ import PersonalInformation from '../components/Profile/PersonalInformation';
 import PasswordChange from '../components/Profile/PasswordChange';
 import { CATEGORIES } from '../types/Article';
 import { useAuth } from '../redux/hooks/useAuth';
-import { useDispatch } from 'react-redux';
 import type { User } from '../types/loginEntity';
 import type { editUserEntity } from '../types/UserEntity';
-import ArticlePreferencesProfile from '../components/Article/ArticlePreferncesProfile';
-import { updateUser } from '../redux/actions/updateUser';
 import { useToast } from '../contexts/ToastContext';
-import type { AppDispatch } from '../redux/Store';
-import { changePassword } from '../redux/actions/changePassword';
-import { updateArticlePreferences } from '../redux/actions/updateArticlePreferences';
+import axiosInstance from '../components/utilities/AxiosInstance';
+import type { CustomResponse } from '../components/utilities/AxiosInstance';
+import ArticlePreferencesProfile from '../components/Article/ArticlePreferncesProfile';
+import { useAppDispatch } from '../redux/hooks/hooks';
+import { getUser } from '../redux/actions/getUser';
 
 const ProfilePage = () => {
-  const dispatch = useDispatch<AppDispatch>();
   const { showToast } = useToast();
+  const dispatch = useAppDispatch();
   const user = useAuth() as User | null;
-  console.log(user,"this is my user 💖💖💖💖")
+  console.log(user, "this is my user 💖💖💖💖");
   const [editMode, setEditMode] = useState({
     profile: false,
     password: false,
@@ -39,7 +38,6 @@ const ProfilePage = () => {
     confirmPassword: '',
   });
 
-  // Updated ValidationErrors type to include all fields
   const [errors, setErrors] = useState<editUserEntity>({
     firstName: '',
     lastName: '',
@@ -54,7 +52,6 @@ const ProfilePage = () => {
 
   const [tempPreferences, setTempPreferences] = useState<string[]>(user?.articlePreferences || []);
 
-  // Use string type for field to match component expectations
   const handleInputChange = (field: string, value: string) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
     setErrors((prev) => ({ ...prev, [field]: '' }));
@@ -87,36 +84,56 @@ const ProfilePage = () => {
 
   // 1. Update Personal Information
   const handleProfileSave = async () => {
-    if (
-      Object.values(errors).some((error) => error) ||
-      !formData.firstName ||
-      !formData.lastName ||
-      !formData.email ||
-      !formData.phone
-    ) {
-      showToast('Please fix all errors before saving', 'error');
+    // Identify changed fields
+    const changedFields = Object.keys(formData).filter(
+      (key) => formData[key as keyof typeof formData] !== user?.[key as keyof User]
+    );
+
+    if (changedFields.length === 0) {
+      showToast('No changes to save', 'info');
+      setEditMode((prev) => ({ ...prev, profile: false }));
       return;
     }
 
+    // Validate changed fields
+    for (const field of changedFields) {
+      if (field === 'firstName' && !formData.firstName.trim()) {
+        setErrors((prev) => ({ ...prev, firstName: 'First name is required' }));
+        return;
+      }
+      if (field === 'lastName' && !formData.lastName.trim()) {
+        setErrors((prev) => ({ ...prev, lastName: 'Last name is required' }));
+        return;
+      }
+      if (field === 'email' && !/\S+@\S+\.\S+/.test(formData.email)) {
+        setErrors((prev) => ({ ...prev, email: 'Invalid email address' }));
+        return;
+      }
+      if (field === 'phone' && !/^\+?\d{10,15}$/.test(formData.phone.replace(/\D/g, ''))) {
+        setErrors((prev) => ({ ...prev, phone: 'Invalid phone number' }));
+        return;
+      }
+      if (field === 'dob' && formData.dob && isNaN(Date.parse(formData.dob))) {
+        setErrors((prev) => ({ ...prev, dob: 'Invalid date of birth format' }));
+        return;
+      }
+    }
+
     try {
-      await dispatch(
-        updateUser({
-          _id: user!._id,
-          firstName: formData.firstName,
-          lastName: formData.lastName,
-          phone: formData.phone,
-          email: formData.email,
-          dob: formData.dob,
-          articlePreferences: user!.articlePreferences,
-          isEmailVerified: user!.isEmailVerified,
-        })
-      ).unwrap();
-      
+      // Create payload with only changed fields
+      const payload = changedFields.reduce((acc, key) => ({
+        ...acc,
+        [key]: formData[key as keyof typeof formData]
+      }), {});
+
+      const response = await axiosInstance.patch<CustomResponse<{ user: User }>>('/profile', payload);
+      showToast(response.data.message || 'Profile updated successfully', 'success');
       setEditMode((prev) => ({ ...prev, profile: false }));
-      showToast('Profile updated successfully!', 'success');
-    } catch (error) {
-      console.log(error);
-      showToast(`Failed to update profile: ${error}`, 'error');
+      await dispatch(getUser());
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : 'Failed to update profile';
+      console.error('Error updating profile:', errorMessage);
+      showToast(errorMessage, 'error');
     }
   };
 
@@ -133,15 +150,11 @@ const ProfilePage = () => {
     }
 
     try {
-      await dispatch(
-        changePassword({
-          userId: user!._id,
-          currentPassword: passwordData.currentPassword,
-          newPassword: passwordData.newPassword,
-        })
-      ).unwrap();
-      
-      showToast('Password changed successfully!', 'success');
+      const response = await axiosInstance.patch<CustomResponse<null>>('/password', {
+        currentPassword: passwordData.currentPassword,
+        newPassword: passwordData.newPassword,
+      });
+      showToast(response.data.message || 'Password updated successfully', 'success');
       setPasswordData({
         currentPassword: '',
         newPassword: '',
@@ -154,9 +167,10 @@ const ProfilePage = () => {
         confirmPassword: '',
       }));
       setEditMode((prev) => ({ ...prev, password: false }));
-    } catch (error) {
-      console.log(error);
-      showToast(`Failed to change password: ${error}`, 'error');
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : 'Failed to change password';
+      console.error('Error changing password:', errorMessage);
+      showToast(errorMessage, 'error');
     }
   };
 
@@ -168,17 +182,24 @@ const ProfilePage = () => {
       return;
     }
 
+    if (tempPreferences.length > 3) {
+      setErrors((prev) => ({ ...prev, articlePreferences: 'You can select up to 3 preferences only' }));
+      showToast('You can select up to 3 preferences only', 'error');
+      return;
+    }
+
     try {
-      await dispatch(
-        updateArticlePreferences([...tempPreferences])
-      ).unwrap();
-      
+      const response = await axiosInstance.patch<CustomResponse<{ preferences: string[] }>>('/preferences', {
+        preferences: tempPreferences,
+      });
+      showToast(response.data.message || 'Preferences updated successfully', 'success');
       setErrors((prev) => ({ ...prev, articlePreferences: '' }));
       setEditMode((prev) => ({ ...prev, preferences: false }));
-      showToast('Preferences updated successfully!', 'success');
-    } catch (error) {
-      console.log(error);
-      showToast(`Failed to update preferences: ${error}`, 'error');
+      await dispatch(getUser());
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : 'Failed to update preferences';
+      console.error('Error updating preferences:', errorMessage);
+      showToast(errorMessage, 'error');
     }
   };
 
@@ -216,6 +237,7 @@ const ProfilePage = () => {
       setErrors((prev) => ({ ...prev, articlePreferences: '' }));
     }
     setEditMode((prev) => ({ ...prev, [section]: false }));
+    
   };
 
   if (!user) {
@@ -426,7 +448,7 @@ const ProfilePage = () => {
               <ArticlePreferencesProfile
                 selectedPreferences={tempPreferences}
                 onChange={setTempPreferences}
-                maxSelections={5}
+                maxSelections={3}
                 error={errors.articlePreferences}
               />
               <div className="flex flex-col sm:flex-row gap-3 pt-4">

@@ -63,7 +63,7 @@ export const fetchMyArticles = async (params: Omit<ArticleQueryParams, 'userId'>
     if (params.sortBy) queryParams.append('sortBy', params.sortBy);
 
     const queryString = queryParams.toString();
-    const url = queryString ? `/article/my-articles?${queryString}` : '/article/my-articles';
+    const url = queryString ? `/articles/my-articles?${queryString}` : '/articles/my-articles';
     
     const response = await axiosInstance.get<CustomResponse<PaginatedArticleResponse>>(url);
     return response.data.data || {
@@ -126,7 +126,7 @@ export const deleteArticle = async (articleId: string): Promise<void> => {
 // Like an article
 export const likeArticle = async (articleId: string): Promise<void> => {
   try {
-    await axiosInstance.patch<CustomResponse>(`/article/like/${articleId}`);
+    await axiosInstance.patch<CustomResponse>(`/articles/like/${articleId}`);
   } catch (error: unknown) {
     const errorMessage = error instanceof Error ? error.message : 'Failed to like article';
     console.error('Error liking article:', errorMessage);
@@ -137,7 +137,7 @@ export const likeArticle = async (articleId: string): Promise<void> => {
 // Dislike an article
 export const dislikeArticle = async (articleId: string): Promise<void> => {
   try {
-    await axiosInstance.patch<CustomResponse>(`/article/dislike/${articleId}`);
+    await axiosInstance.patch<CustomResponse>(`/articles/dislike/${articleId}`);
   } catch (error: unknown) {
     const errorMessage = error instanceof Error ? error.message : 'Failed to dislike article';
     console.error('Error disliking article:', errorMessage);
@@ -160,7 +160,7 @@ export const getArticleById = async (articleId: string): Promise<Article> => {
 // Create a new article
 export const createArticle = async (articleData:createArticleEntity): Promise<Article> => {
   try {
-    const response = await axiosInstance.post<CustomResponse<Article>>('/article', articleData);
+    const response = await axiosInstance.post<CustomResponse<Article>>('/articles', articleData);
     return response.data.data;
   } catch (error: unknown) {
     const errorMessage = error instanceof Error ? error.message : 'Failed to create article';
@@ -184,7 +184,7 @@ export const updateArticle = async (articleId: string, articleData: Partial<Arti
 // Block/Hide an article (alternative to delete if you want to keep it but hide it)
 export const blockArticle = async (articleId: string): Promise<void> => {
   try {
-    await axiosInstance.patch<CustomResponse>(`/article/block/${articleId}`);
+    await axiosInstance.patch<CustomResponse>(`/articles/block/${articleId}`);
   } catch (error: unknown) {
     const errorMessage = error instanceof Error ? error.message : 'Failed to block article';
     console.error('Error blocking article:', errorMessage);

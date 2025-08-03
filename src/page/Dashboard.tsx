@@ -4,12 +4,13 @@ import Pagination from '../components/utilities/Pagination';
 import ArticleModal from '../components/Article/ArticleModal';
 import Banner from '../components/UI/Banner';
 import ArticleCard from '../components/Article/ArticleCard';
-import { fetchArticles, getCategories, likeArticle, dislikeArticle, blockArticle, type ArticleQueryParams } from '../service/articleService';
+import { fetchArticles, likeArticle, dislikeArticle, blockArticle, type ArticleQueryParams } from '../service/articleService';
 import { useAuth } from '../redux/hooks/useAuth';
-import type { Article } from '../types/Article';
+import { CATEGORIES, type Article } from '../types/Article';
+import ConfirmationModal from '../components/UI/ConfirmationModal';
 
 const Dashboard: React.FC = () => {
-  const user  = useAuth(); // Contains userId and articlePreferences
+  const user = useAuth(); // Contains userId and articlePreferences
   const [articles, setArticles] = useState<Article[]>([]);
   const [selectedArticle, setSelectedArticle] = useState<Article | null>(null);
   const [currentPage, setCurrentPage] = useState<number>(1);
@@ -18,28 +19,13 @@ const Dashboard: React.FC = () => {
   const [totalPages, setTotalPages] = useState<number>(0);
   const [searchTerm, setSearchTerm] = useState<string>('');
   const [selectedCategory, setSelectedCategory] = useState<string>('');
-  const [categories, setCategories] = useState<string[]>([]);
   const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
+  const [articleToBlock, setArticleToBlock] = useState<string | null>(null);
+  const [isConfirmModalOpen, setIsConfirmModalOpen] = useState<boolean>(false);
+  const [isBlocking, setIsBlocking] = useState<boolean>(true); // Track whether the action is block or unblock
 
   const articlesPerPage: number = 8;
-
-  // Fetch user preferences and categories on mount
-  useEffect(() => {
-    const fetchInitialData = async () => {
-      try {
-        setLoading(true);
-        const  fetchedCategories = await getCategories()
-        setCategories(fetchedCategories);
-      } catch (err) {
-        setError('Failed to load initial data');
-        console.error(err);
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetchInitialData();
-  }, []);
 
   // Fetch articles based on preferences, search, and category
   const fetchArticlesData = useCallback(async () => {
@@ -84,7 +70,7 @@ const Dashboard: React.FC = () => {
                 ...article,
                 likes: article.likes.includes(user?._id)
                   ? article.likes.filter((id) => id !== user?._id)
-                  : [...article.likes,user?._id],
+                  : [...article.likes, user?._id],
                 dislikes: article.dislikes.includes(user?._id)
                   ? article.dislikes.filter((id) => id !== user?._id)
                   : article.dislikes,
@@ -92,6 +78,21 @@ const Dashboard: React.FC = () => {
             : article
         )
       );
+      if (selectedArticle?._id === articleId) {
+        setSelectedArticle((prev) =>
+          prev
+            ? {
+                ...prev,
+                likes: prev.likes.includes(user?._id)
+                  ? prev.likes.filter((id) => id !== user?._id)
+                  : [...prev.likes, user?._id],
+                dislikes: prev.dislikes.includes(user?._id)
+                  ? prev.dislikes.filter((id) => id !== user?._id)
+                  : prev.dislikes,
+              }
+            : prev
+        );
+      }
     } catch (err) {
       console.error('Failed to like article', err);
     }
@@ -117,19 +118,85 @@ const Dashboard: React.FC = () => {
             : article
         )
       );
+      if (selectedArticle?._id === articleId) {
+        setSelectedArticle((prev) =>
+          prev
+            ? {
+                ...prev,
+                dislikes: prev.dislikes.includes(user?._id)
+                  ? prev.dislikes.filter((id) => id !== user?._id)
+                  : [...prev.dislikes, user?._id],
+                likes: prev.likes.includes(user?._id)
+                  ? prev.likes.filter((id) => id !== user?._id)
+                  : prev.likes,
+              }
+            : prev
+        );
+      }
     } catch (err) {
       console.error('Failed to dislike article', err);
     }
   };
 
-  const handleBlock = async (articleId: string): Promise<void> => {
+  const handleBlockClick = (articleId: string): void => {
+    const article = articles.find((a) => a._id === articleId) || selectedArticle;
+    if (!article || !user?._id) return;
+
+    // Check if the article is already blocked by the user
+    const isAlreadyBlocked = article.blockedBy?.includes(user._id);
+    setIsBlocking(!isAlreadyBlocked); // Set action to block if not blocked, unblock if blocked
+    setArticleToBlock(articleId);
+    setIsConfirmModalOpen(true);
+  };
+
+  const cancelBlock = (): void => {
+    setIsConfirmModalOpen(false);
+    setArticleToBlock(null);
+    setIsBlocking(true); // Reset to default
+  };
+
+  const handleBlock = async (): Promise<void> => {
+    if (!articleToBlock || !user?._id) return;
+
     try {
-      await blockArticle(articleId);
-      setArticles((prev) => prev.filter((article) => article._id !== articleId));
-      setIsModalOpen(false);
-      setSelectedArticle(null);
+      await blockArticle(articleToBlock); // Assume blockArticle toggles block/unblock
+      setArticles((prev) => {
+        const article = prev.find((a) => a._id === articleToBlock);
+        if (!article) return prev;
+
+        const isAlreadyBlocked = article.blockedBy?.includes(user._id);
+        if (isAlreadyBlocked) {
+          // Unblock: Update the article to remove user from blockedBy
+          return prev.map((a) =>
+            a._id === articleToBlock
+              ? { ...a, blockedBy: a.blockedBy?.filter((id) => id !== user._id) || [] }
+              : a
+          );
+        } else {
+          // Block: Remove the article from the feed
+          return prev.filter((a) => a._id !== articleToBlock);
+        }
+      });
+
+      if (selectedArticle?._id === articleToBlock) {
+        const isAlreadyBlocked = selectedArticle.blockedBy?.includes(user._id);
+        if (isAlreadyBlocked) {
+          // Update selectedArticle to reflect unblock
+          setSelectedArticle((prev) =>
+            prev ? { ...prev, blockedBy: prev.blockedBy?.filter((id) => id !== user._id) || [] } : prev
+          );
+        } else {
+          // Close modal if blocking
+          setIsModalOpen(false);
+          setSelectedArticle(null);
+        }
+      }
+
+      setIsConfirmModalOpen(false);
+      setArticleToBlock(null);
+      setIsBlocking(true); // Reset to default
     } catch (err) {
-      console.error('Failed to block article', err);
+      console.error('Failed to block/unblock article', err);
     }
   };
 
@@ -140,14 +207,14 @@ const Dashboard: React.FC = () => {
 
   const handleSearch = (e: React.ChangeEvent<HTMLInputElement>) => {
     setSearchTerm(e.target.value);
-    setCurrentPage(1); // Reset to first page on new search
+    setCurrentPage(1);
   };
 
   const handleCategoryChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     setSelectedCategory(e.target.value);
-    setCurrentPage(1); // Reset to first page on category change
+    setCurrentPage(1);
   };
-
+console.log(articles,"this is articles")
   return (
     <div className="min-h-screen bg-gradient-to-br from-[#8B4513]/20 via-[#A0522D]/20 to-[#CD853F]/20">
       <Banner />
@@ -179,9 +246,9 @@ const Dashboard: React.FC = () => {
             className="px-4 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-amber-600 bg-white/80 text-gray-900"
           >
             <option value="">All Categories</option>
-            {categories.map((category) => (
-              <option key={category} value={category}>
-                {category}
+            {CATEGORIES.map((category) => (
+              <option key={category.id} value={category.id}>
+                {category.name}
               </option>
             ))}
           </select>
@@ -199,7 +266,7 @@ const Dashboard: React.FC = () => {
                 onCardClick={openArticle}
                 onLike={handleLike}
                 onDislike={handleDislike}
-                onBlock={handleBlock}
+                onBlock={handleBlockClick}
               />
             ))
           ) : (
@@ -222,7 +289,20 @@ const Dashboard: React.FC = () => {
         onClose={() => setIsModalOpen(false)}
         onLike={handleLike}
         onDislike={handleDislike}
-        onBlock={handleBlock}
+        onBlock={handleBlockClick}
+      />
+      <ConfirmationModal
+        isOpen={isConfirmModalOpen}
+        title={isBlocking ? 'Confirm Block' : 'Confirm Unblock'}
+        message={
+          isBlocking
+            ? 'Are you sure you want to block this article? It will be removed from your feed.'
+            : 'Are you sure you want to unblock this article? It may reappear in your feed.'
+        }
+        onConfirm={handleBlock}
+        onCancel={cancelBlock}
+        confirmText={isBlocking ? 'Block' : 'Unblock'}
+        cancelText="Cancel"
       />
     </div>
   );

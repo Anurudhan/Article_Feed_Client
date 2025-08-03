@@ -1,4 +1,4 @@
-import { Edit, Eye, Trash2, X } from "lucide-react";
+import { Edit, Eye, ThumbsDown, ThumbsUp, Trash2, X } from "lucide-react";
 import Button from "../UI/Button";
 import type { Article } from "../../types/Article";
 
@@ -17,10 +17,7 @@ const MyArticleModal: React.FC<{
   };
 
   const handleDelete = () => {
-    if (window.confirm('Are you sure you want to delete this article? This action cannot be undone.')) {
-      onDelete(article._id);
-      onClose();
-    }
+     onDelete(article._id);
   };
 
   return (
@@ -77,7 +74,7 @@ const MyArticleModal: React.FC<{
             <div className="flex flex-wrap items-center gap-4 text-sm text-amber-700 mb-4">
               <span className="flex items-center gap-1">
                 <Eye className="h-4 w-4" />
-                {article.views} views
+                {article.views.length} views
               </span>
               {article.isPublished && article.publishedAt && (
                 <span>Published: {new Date(article.publishedAt).toLocaleDateString()}</span>
@@ -119,20 +116,32 @@ const MyArticleModal: React.FC<{
             }}
           >
             <div className="text-center">
-              <div className="text-2xl font-bold text-amber-900">{article.likes}</div>
+              <div className="text-2xl font-bold text-amber-900">{article.likes.length}</div>
               <div
-                className="text-sm text-amber-700"
+                className="text-sm text-amber-700 flex items-center justify-center gap-1"
                 style={{ fontFamily: '"Times New Roman", serif' }}
               >
+                <ThumbsUp className="h-4 w-4" />
                 Likes
               </div>
             </div>
             <div className="text-center">
-              <div className="text-2xl font-bold text-amber-900">{article.views}</div>
+              <div className="text-2xl font-bold text-amber-900">{article.dislikes.length}</div>
               <div
-                className="text-sm text-amber-700"
+                className="text-sm text-amber-700 flex items-center justify-center gap-1"
                 style={{ fontFamily: '"Times New Roman", serif' }}
               >
+                <ThumbsDown className="h-4 w-4" />
+                Dislikes
+              </div>
+            </div>
+            <div className="text-center">
+              <div className="text-2xl font-bold text-amber-900">{article.views.length}</div>
+              <div
+                className="text-sm text-amber-700 flex items-center justify-center gap-1"
+                style={{ fontFamily: '"Times New Roman", serif' }}
+              >
+                <Eye className="h-4 w-4" />
                 Views
               </div>
             </div>
@@ -174,7 +183,7 @@ const MyArticleModal: React.FC<{
             onClick={handleDelete}
             className="bg-red-100 border-red-300 text-red-700 hover:bg-red-200 px-4 py-2 rounded-lg transition-all duration-300"
             style={{ fontFamily: '"Times New Roman", serif' }}
-          >
+            >
             Delete Article
           </Button>
         </div>
@@ -183,4 +192,4 @@ const MyArticleModal: React.FC<{
   );
 };
 
-export default MyArticleModal 
+export default MyArticleModal;
