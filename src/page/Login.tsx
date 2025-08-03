@@ -1,5 +1,5 @@
 import React, { useState, useCallback } from 'react';
-import { Eye, EyeOff, Mail, Phone, Lock, Newspaper, BookOpen, PenTool, FileText } from 'lucide-react';
+import { Eye, EyeOff, Mail, Phone, Lock, Newspaper, BookOpen, PenTool, FileText, Loader } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 import { z } from 'zod';
 import { useToast } from '../contexts/ToastContext';
@@ -246,10 +246,17 @@ const LoginPage: React.FC = () => {
               }}
             >
               {isLoading ? (
-                <div className="flex items-center justify-center space-x-2">
-                  <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                  <span>Signing in...</span>
-                </div>
+                <div className="flex justify-center items-center h-64">
+            <div className="flex flex-col items-center space-y-3">
+              <Loader className="h-8 w-8 text-amber-600 animate-spin" />
+              <p
+                className="text-amber-800 font-medium"
+                style={{ fontFamily: '"Times New Roman", serif' }}
+              >
+                Sign In ...
+              </p>
+            </div>
+          </div>
               ) : (
                 'Sign In'
               )}

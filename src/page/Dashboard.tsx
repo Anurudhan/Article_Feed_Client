@@ -1,5 +1,5 @@
 import { useEffect, useState, useCallback } from 'react';
-import { Star } from 'lucide-react';
+import { Loader, Star } from 'lucide-react';
 import Pagination from '../components/utilities/Pagination';
 import ArticleModal from '../components/Article/ArticleModal';
 import Banner from '../components/UI/Banner';
@@ -254,7 +254,17 @@ console.log(articles,"this is articles")
           </select>
         </div>
 
-        {loading && <p className="text-gray-600 text-center">Loading articles...</p>}
+        {loading && <div className="flex justify-center items-center h-64">
+            <div className="flex flex-col items-center space-y-3">
+              <Loader className="h-8 w-8 text-amber-600 animate-spin" />
+              <p
+                className="text-amber-800 font-medium"
+                style={{ fontFamily: '"Times New Roman", serif' }}
+              >
+                Loading your articles...
+              </p>
+            </div>
+          </div>}
         {error && <p className="text-red-500 text-center">{error}</p>}
 
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 sm:gap-6">

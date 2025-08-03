@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { User as UserIcon, Settings, Lock, BookOpen, Save, X, Check, Edit3, Mail, Phone, Calendar } from 'lucide-react';
+import { User as UserIcon, Settings, Lock, BookOpen, Save, X, Check, Edit3, Mail, Phone, Calendar, Loader } from 'lucide-react';
 import PersonalInformation from '../components/Profile/PersonalInformation';
 import PasswordChange from '../components/Profile/PasswordChange';
 import { CATEGORIES } from '../types/Article';
@@ -241,7 +241,17 @@ const ProfilePage = () => {
   };
 
   if (!user) {
-    return <div>Loading...</div>;
+    return <div className="flex justify-center items-center h-64">
+            <div className="flex flex-col items-center space-y-3">
+              <Loader className="h-8 w-8 text-amber-600 animate-spin" />
+              <p
+                className="text-amber-800 font-medium"
+                style={{ fontFamily: '"Times New Roman", serif' }}
+              >
+                Loading your profile...
+              </p>
+            </div>
+          </div>;
   }
 
   return (
